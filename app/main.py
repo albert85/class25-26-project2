@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -30,7 +31,7 @@ def set_session(response: RedirectResponse, username: str) -> None:
     )
 
 
-def get_user(request: Request) -> str | None:
+def get_user(request: Request) ->  Optional[str]:
     token = request.cookies.get(COOKIE_NAME)
     if not token:
         return None
@@ -42,7 +43,7 @@ def get_user(request: Request) -> str | None:
 
 
 @app.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request, error: str | None = None):
+async def login_get(request: Request, error:  Optional[str] = None):
     return templates.TemplateResponse("login.html", {"request": request, "error": error})
 
 

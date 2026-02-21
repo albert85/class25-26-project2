@@ -2,6 +2,7 @@
 - name: Apply CIS Hardening & Baseline
   hosts: all
   become: yes
+  ignore_errors: yes
   roles:
     - role: dev-sec.os-hardening
     - role: dev-sec.ssh-hardening

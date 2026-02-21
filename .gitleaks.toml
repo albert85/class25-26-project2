@@ -1,0 +1,3 @@
+[allowlist]
+description = "Allow Ansible Vault encrypted strings"
+regexes = ['\$ANSIBLE_VAULT;.*']

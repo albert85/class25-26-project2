@@ -1,0 +1,11 @@
+---
+- name: Apply CIS Hardening & Baseline
+  hosts: all
+  become: yes
+  roles:
+    - role: dev-sec.os-hardening
+    - role: dev-sec.ssh-hardening
+    - role: ubuntu22-cis
+      vars:
+        ubuntu22cis_level: 1
+    - role: web_baseline

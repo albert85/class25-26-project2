@@ -1,12 +1,13 @@
 ---
-# 1. Install System Packages (Using DNF for Amazon Linux/ec2-user)
+# 1. Package Installation (Ubuntu/Debian standard)
 - name: Install security-essential and python packages
-  ansible.builtin.dnf:
-    name: [ufw, fail2ban, chrony, python3-pip, python3-devel, nginx]
+  ansible.builtin.apt:
+    name: [ufw, fail2ban, chrony, unattended-upgrades, python3-pip, python3-venv, nginx]
     state: present
     update_cache: yes
+    cache_valid_time: 3600
 
-# 2. Configure UFW Firewall
+# 2. Firewall and System Hardening
 - name: Configure UFW Firewall
   community.general.ufw:
     rule: allow
@@ -19,7 +20,6 @@
     state: enabled
     policy: deny
 
-# 3. AWS Time Sync & Security Updates
 - name: Ensure AWS Time Sync is configured
   ansible.builtin.lineinfile:
     path: /etc/chrony/chrony.conf
@@ -27,7 +27,7 @@
     state: present
   notify: restart_chrony
 
-# 4. Prepare Project Directory & Sync Code
+# 3. Project Directory and Code Sync
 - name: Ensure project directory exists
   ansible.builtin.file:
     path: /home/ec2-user/class25-26-project2
@@ -38,12 +38,14 @@
 
 - name: Sync application code to server
   ansible.builtin.copy:
-    src: ./  # Copies your repo content (including requirements.txt)
+    src: ./ 
     dest: /home/ec2-user/class25-26-project2/
     owner: ec2-user
     group: ec2-user
+    # Avoid copying local .venv or __pycache__ if they exist
+    exclude: [ '.venv', '__pycache__', '.git' ]
 
-# 5. Virtual Environment Setup
+# 4. Virtual Environment & Dependencies
 - name: Create Python Virtual Environment and install requirements
   ansible.builtin.pip:
     requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
@@ -52,7 +54,7 @@
   become: yes
   become_user: ec2-user
 
-# 6. Deploy FastAPI Systemd Service
+# 5. FastAPI Service Deployment
 - name: Copy FastAPI systemd service file
   ansible.builtin.template:
     src: project.service.j2
@@ -60,15 +62,28 @@
     mode: '0644'
   notify: Restart FastAPI
 
-# 7. Configure Nginx (Amazon Linux typically uses conf.d instead of sites-available)
-- name: Copy Nginx configuration
+# 6. Nginx Configuration (Ubuntu Sites-Available Pattern)
+
+- name: Copy Nginx configuration to sites-available
   ansible.builtin.template:
     src: nginx_fastapi.conf.j2
-    dest: /etc/nginx/conf.d/fastapi.conf
+    dest: /etc/nginx/sites-available/fastapi
     mode: '0644'
   notify: Reload Nginx
 
-# 8. Final Service Management
+- name: Enable Nginx site via symbolic link
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/fastapi
+    dest: /etc/nginx/sites-enabled/fastapi
+    state: link
+
+- name: Remove default Nginx site to prevent conflicts
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload Nginx
+
+# 7. Service Start and Verification
 - name: Ensure FastAPI and Nginx are running
   ansible.builtin.service:
     name: "{{ item }}"

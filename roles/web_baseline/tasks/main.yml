@@ -1,11 +1,12 @@
 ---
-- name: Install security-essential packages
-  ansible.builtin.apt:
-    name: [ufw, fail2ban, chrony, unattended-upgrades, python3-pip, python3-venv]
+# 1. Install System Packages (Using DNF for Amazon Linux/ec2-user)
+- name: Install security-essential and python packages
+  ansible.builtin.dnf:
+    name: [ufw, fail2ban, chrony, python3-pip, python3-devel, nginx]
     state: present
     update_cache: yes
-    cache_valid_time: 3600
 
+# 2. Configure UFW Firewall
 - name: Configure UFW Firewall
   community.general.ufw:
     rule: allow
@@ -18,6 +19,7 @@
     state: enabled
     policy: deny
 
+# 3. AWS Time Sync & Security Updates
 - name: Ensure AWS Time Sync is configured
   ansible.builtin.lineinfile:
     path: /etc/chrony/chrony.conf
@@ -25,48 +27,48 @@
     state: present
   notify: restart_chrony
 
-- name: Ensure automatic security updates are enabled
+# 4. Prepare Project Directory & Sync Code
+- name: Ensure project directory exists
+  ansible.builtin.file:
+    path: /home/ec2-user/class25-26-project2
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+
+- name: Sync application code to server
   ansible.builtin.copy:
-    dest: /etc/apt/apt.conf.d/20auto-upgrades
-    content: |
-      APT::Periodic::Update-Package-Lists "1";
-      APT::Periodic::Unattended-Upgrade "1";
+    src: ./  # Copies your repo content (including requirements.txt)
+    dest: /home/ec2-user/class25-26-project2/
+    owner: ec2-user
+    group: ec2-user
 
-# 1. Install Nginx
-- name: Ensure Nginx is installed
-  ansible.builtin.apt:
-    name: nginx
-    state: present
+# 5. Virtual Environment Setup
+- name: Create Python Virtual Environment and install requirements
+  ansible.builtin.pip:
+    requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
+    virtualenv: "/home/ec2-user/class25-26-project2/.venv"
+    virtualenv_command: python3 -m venv
+  become: yes
+  become_user: ec2-user
 
-# 2. Copy FastAPI Systemd Service File
+# 6. Deploy FastAPI Systemd Service
 - name: Copy FastAPI systemd service file
   ansible.builtin.template:
-    src: project.service.j2  # Matches your image
+    src: project.service.j2
     dest: /etc/systemd/system/fastapi.service
     mode: '0644'
   notify: Restart FastAPI
 
-# 3. Configure Nginx (Sites-Available Pattern)
+# 7. Configure Nginx (Amazon Linux typically uses conf.d instead of sites-available)
 - name: Copy Nginx configuration
   ansible.builtin.template:
-    src: nginx_fastapi.conf.j2  # Matches your image
-    dest: /etc/nginx/sites-available/fastapi
+    src: nginx_fastapi.conf.j2
+    dest: /etc/nginx/conf.d/fastapi.conf
     mode: '0644'
   notify: Reload Nginx
 
-- name: Enable Nginx site link
-  ansible.builtin.file:
-    src: /etc/nginx/sites-available/fastapi
-    dest: /etc/nginx/sites-enabled/fastapi
-    state: link
-
-- name: Remove default Nginx site
-  ansible.builtin.file:
-    path: /etc/nginx/sites-enabled/default
-    state: absent
-  notify: Reload Nginx
-
-# 4. Ensure services are started and enabled
+# 8. Final Service Management
 - name: Ensure FastAPI and Nginx are running
   ansible.builtin.service:
     name: "{{ item }}"

@@ -1,5 +1,5 @@
 ---
-# 1. Package Installation (DNF for Amazon Linux)
+# 1. Package Installation
 - name: Install security-essential and python packages
   ansible.builtin.dnf:
     name: 
@@ -7,19 +7,19 @@
       - python3-pip
       - python3-devel
       - chrony
-      - firewalld       # RHEL/Amazon Linux equivalent to UFW
+      - firewalld
       - fail2ban
     state: present
     update_cache: yes
 
-# 2. Security Hardening: Firewall (Firewalld)
+# 2. Security Hardening: Firewall
 - name: Ensure firewalld is running
   ansible.builtin.service:
     name: firewalld
     state: started
     enabled: yes
 
-- name: Allow SSH, HTTP, and HTTPS in firewall
+- name: Allow SSH, HTTP, and HTTPS
   ansible.posix.firewalld:
     service: "{{ item }}"
     permanent: yes
@@ -28,7 +28,7 @@
   notify: reload_firewall
 
 # 3. Security Hardening: Time Sync & Fail2Ban
-- name: Ensure AWS Time Sync is configured (CIS Best Practice)
+- name: Configure AWS Time Sync
   ansible.builtin.lineinfile:
     path: /etc/chrony/chrony.conf
     line: "server 169.254.169.123 prefer iburst"
@@ -41,25 +41,17 @@
     state: started
     enabled: yes
 
-# 4. Project Directory and Code Sync
-- name: Ensure project directory exists
-  ansible.builtin.file:
-    path: /home/ec2-user/class25-26-project2
-    state: directory
+# 4. Direct Code Sync (Creates directory automatically)
+- name: Sync all GitHub data to server
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/" # Syncs the whole repo where the playbook lives
+    dest: /home/ec2-user/class25-26-project2/
     owner: ec2-user
     group: ec2-user
     mode: '0755'
 
-- name: Sync application code to server
-  ansible.builtin.copy:
-    src: ./ 
-    dest: /home/ec2-user/class25-26-project2/
-    owner: ec2-user
-    group: ec2-user
-    exclude: [ '.venv', '__pycache__', '.git' ]
-
 # 5. Virtual Environment & Dependencies
-- name: Create Python Virtual Environment and install requirements
+- name: Setup .venv and install requirements
   ansible.builtin.pip:
     requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
     virtualenv: "/home/ec2-user/class25-26-project2/.venv"
@@ -67,29 +59,22 @@
   become: yes
   become_user: ec2-user
 
-# 6. FastAPI Service Deployment
-- name: Copy FastAPI systemd service file
+# 6. Service & Nginx Deployment (Templates)
+- name: Deploy FastAPI systemd service
   ansible.builtin.template:
     src: project.service.j2
     dest: /etc/systemd/system/fastapi.service
     mode: '0644'
   notify: Restart FastAPI
 
-# 7. Nginx Configuration (RHEL/Amazon Linux Path)
-- name: Ensure Nginx conf.d directory exists
-  ansible.builtin.file:
-    path: /etc/nginx/conf.d
-    state: directory
-    mode: '0755'
-
-- name: Copy Nginx configuration to conf.d
+- name: Deploy Nginx configuration
   ansible.builtin.template:
     src: nginx_fastapi.conf.j2
     dest: /etc/nginx/conf.d/fastapi.conf
     mode: '0644'
   notify: Reload Nginx
 
-# 8. Service Start and Verification
+# 7. Final Service Activation
 - name: Ensure FastAPI and Nginx are running
   ansible.builtin.service:
     name: "{{ item }}"

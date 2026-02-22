@@ -1,4 +1,4 @@
-name: CIS Hardening Pipeline
+name: CIS Hardening & FastAPI Pipeline
 
 on:
   push:
@@ -8,6 +8,9 @@ on:
 jobs:
   security_scans:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -42,39 +45,34 @@ jobs:
         uses: actions/setup-python@v4
         with: { python-version: '3.10' }
       
-        # 6. Cache Ansible Roles to save 1-2 minutes of download time
       - name: Cache Ansible Roles
         uses: actions/cache@v3
         with:
           path: ~/.ansible/roles
           key: ${{ runner.os }}-ansible-roles-${{ hashFiles('requirements.yml') }}
 
-      - name: Install Ansible & Galaxy Roles
+      - name: Install Ansible & Dependencies
         run: |
           pip install ansible boto3 botocore
           ansible-galaxy install -r requirements.yml
 
-      - name: Deploy to AWS
+      - name: Run Ansible Playbook (Hardening + Nginx + FastAPI)
         env:
           VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
           SSH_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
         run: |
           echo "$VAULT_PASS" > .vault_pass
           echo "$SSH_KEY" > id_rsa && chmod 600 id_rsa
+          # StrictHostKeyChecking=no prevents the "untrusted host" prompt from hanging the CI
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
-            -u ubuntu
+            -u ubuntu \
+            --ssh-common-args='-o StrictHostKeyChecking=no'
 
-  project_deploy:
-    needs: security_scans
-    runs-on: ubuntu-latest
-    steps:
-        - uses: actions/checkout@v4
-
-        - name: Set up Nginx
-          run: |
-            sudo apt-get update
-            sudo apt-get install nginx -y
-        
-        
+      - name: Verify Deployment (Smoke Test)
+        run: |
+          echo "Waiting for services to start..."
+          sleep 10
+          # This pings your AWS IP to make sure Nginx is serving the FastAPI app
+          curl -s --head http://${{ secrets.INSTANCE_IP }} | grep "200 OK"

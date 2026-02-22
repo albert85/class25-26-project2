@@ -1,9 +1,10 @@
 ---
 - name: Install security-essential packages
   ansible.builtin.apt:
-    name: [ufw, fail2ban, chrony, unattended-upgrades]
+    name: [ufw, fail2ban, chrony, unattended-upgrades, python3-pip, python3-venv]
     state: present
     update_cache: yes
+    cache_valid_time: 3600
 
 - name: Configure UFW Firewall
   community.general.ufw:
@@ -17,7 +18,7 @@
     state: enabled
     policy: deny
 
-- name: Ensure AWS Time Sync is configured (CIS/AWS Best Practice)
+- name: Ensure AWS Time Sync is configured
   ansible.builtin.lineinfile:
     path: /etc/chrony/chrony.conf
     line: "server 169.254.169.123 prefer iburst"
@@ -40,20 +41,32 @@
 # 2. Copy FastAPI Systemd Service File
 - name: Copy FastAPI systemd service file
   ansible.builtin.template:
-    src: project.service.j2
-    dest: /etc/systemd/system/project.service
+    src: project.service.j2  # Matches your image
+    dest: /etc/systemd/system/fastapi.service
     mode: '0644'
   notify: Restart FastAPI
 
-# 3. Configure Nginx as Reverse Proxy
+# 3. Configure Nginx (Sites-Available Pattern)
 - name: Copy Nginx configuration
   ansible.builtin.template:
-    src: nginx_fastapi.conf.j2
-    dest: /etc/nginx/nginx.conf
+    src: nginx_fastapi.conf.j2  # Matches your image
+    dest: /etc/nginx/sites-available/fastapi
     mode: '0644'
   notify: Reload Nginx
 
-# 6. Ensure services are started and enabled
+- name: Enable Nginx site link
+  ansible.builtin.file:
+    src: /etc/nginx/sites-available/fastapi
+    dest: /etc/nginx/sites-enabled/fastapi
+    state: link
+
+- name: Remove default Nginx site
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload Nginx
+
+# 4. Ensure services are started and enabled
 - name: Ensure FastAPI and Nginx are running
   ansible.builtin.service:
     name: "{{ item }}"

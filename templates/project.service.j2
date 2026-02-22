@@ -1,0 +1,14 @@
+[Service]
+Environment="APP_SECRET_KEY={{ secret_key }}"
+Environment="APP_DEMO_USER={{ demo_user }}"
+Environment="APP_DEMO_PASS={{ demo_pass }}"
+
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/home/ec2-user/class25-26-project2
+
+
+ExecStart=/bin/bash -c 'source .venv/bin/activate && cd app && uvicorn main:app --host 127.0.0.1 --port 9000'
+
+Restart =always
+RestartSec=5

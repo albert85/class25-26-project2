@@ -41,6 +41,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with: { python-version: '3.10' }
+      
+        # 6. Cache Ansible Roles to save 1-2 minutes of download time
+      - name: Cache Ansible Roles
+        uses: actions/cache@v3
+        with:
+          path: ~/.ansible/roles
+          key: ${{ runner.os }}-ansible-roles-${{ hashFiles('requirements.yml') }}
 
       - name: Install Ansible & Galaxy Roles
         run: |
@@ -58,3 +65,16 @@ jobs:
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ubuntu
+
+  project_deploy:
+    needs: security_scans
+    runs-on: ubuntu-latest
+    steps:
+        - uses: actions/checkout@v4
+
+        - name: Set up Nginx
+          run: |
+            sudo apt-get update
+            sudo apt-get install nginx -y
+        
+        

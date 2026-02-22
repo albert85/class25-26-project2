@@ -2,11 +2,21 @@
 - name: Apply CIS Hardening & Baseline
   hosts: all
   become: yes
-  ignore_errors: yes
+  vars:
+    os_package_upgrade: false
+    os_package_update: false
+    # 5. Skip the slow "FileSystem" deep-scans (Section 1.1 and 6.1)
+    ubuntu22cis_section1_rule_1_1_1: false
+    ubuntu22cis_rule_6_1_10: false 
+    ubuntu22cis_rule_6_1_11: false
+    ubuntu22cis_rule_6_1_12: false
+    # Limit to Level 1 (Practical security)
+    ubuntu22cis_level: 1
   roles:
     - role: dev-sec.os-hardening
     - role: dev-sec.ssh-hardening
     - role: ubuntu22-cis
+      ignore_errors: yes
       vars:
         ubuntu22cis_level: 1
     - role: web_baseline

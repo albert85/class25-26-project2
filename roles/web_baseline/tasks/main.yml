@@ -30,3 +30,33 @@
     content: |
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
+
+# 1. Install Nginx
+- name: Ensure Nginx is installed
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+# 2. Copy FastAPI Systemd Service File
+- name: Copy FastAPI systemd service file
+  ansible.builtin.template:
+    src: /templates/project.service.j2
+    dest: /etc/systemd/system/project.service
+    mode: '0644'
+  notify: Restart FastAPI
+
+# 3. Configure Nginx as Reverse Proxy
+- name: Copy Nginx configuration
+  ansible.builtin.template:
+    src: nginx_fastapi.conf.j2
+    dest: /etc/nginx/nginx.conf
+    mode: '0644'
+  notify: Reload Nginx
+
+# 6. Ensure services are started and enabled
+- name: Ensure FastAPI and Nginx are running
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop: [fastapi, nginx]

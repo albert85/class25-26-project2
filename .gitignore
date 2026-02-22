@@ -59,3 +59,4 @@ secrets/
 logs/
 .env
 .vault_pass
+env

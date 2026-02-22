@@ -40,7 +40,7 @@
 # 2. Copy FastAPI Systemd Service File
 - name: Copy FastAPI systemd service file
   ansible.builtin.template:
-    src: /templates/project.service.j2
+    src: project.service.j2
     dest: /etc/systemd/system/project.service
     mode: '0644'
   notify: Restart FastAPI

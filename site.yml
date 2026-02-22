@@ -2,6 +2,7 @@
 - name: Apply CIS Hardening & Baseline
   hosts: all
   become: yes
+  ignore_errors: yes
   vars:
     os_package_upgrade: false
     os_package_update: false

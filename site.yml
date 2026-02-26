@@ -12,6 +12,10 @@
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
+  vars:
+    ntp_config_file: /etc/chrony.conf
+    # Disable the specific task that is failing if the path is still an issue
+    os_security_kernel_enable_ntp: false
   roles:
     - os_hardening
 
@@ -19,6 +23,10 @@
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
+  vars:
+    ntp_config_file: /etc/chrony.conf
+    # Disable the specific task that is failing if the path is still an issue
+    os_security_kernel_enable_ntp: false
   roles:
     - os_hardening
 

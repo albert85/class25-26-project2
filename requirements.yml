@@ -1,6 +1,9 @@
 ---
-roles:
-  - name: dev-sec.os-hardening
-  - name: dev-sec.ssh-hardening
-  - src: https://github.com/ansible-lockdown/UBUNTU22-CIS
-    name: ubuntu22-cis
+- src: dev-sec.os-hardening
+  name: os_hardening
+
+- src: dev-sec.ssh-hardening
+  name: ssh_hardening
+
+- src: https://github.com/ansible-lockdown/RHEL9-CIS
+  name: rhel9-cis

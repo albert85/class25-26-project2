@@ -1,43 +1,53 @@
 ---
-# Step 1: Ensure we can actually talk to the servers
-# - name: Connectivity Check
-#   hosts: all
-#   gather_facts: no
-#   tasks:
-#     - name: Wait for SSH
-#       wait_for_connection:
-#         timeout: 60
+# Step 1: Connectivity Check
+# Essential for GitHub Actions to ensure the EC2 instances are fully booted
+- name: Connectivity Check
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Wait for SSH to respond
+      wait_for_connection:
+        timeout: 60
 
-# Step 2: Lockdown the Bastion
+# Step 2: Hardening the Bastion
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
   vars:
+    # Amazon Linux 2023 / RHEL Path Fixes
     ntp_config_file: /etc/chrony.conf
-    # Disable the specific task that is failing if the path is still an issue
     os_security_kernel_enable_ntp: false
+    # CIS Benchmark Fixes for Cloud Instances
+    rhel9cis_bootloader_password: false
+    rhel9cis_setup_audit: true
   roles:
     - os_hardening
+    - ssh_hardening
+    - rhel9-cis
 
-# Step 3: Lockdown the App Server (Via Bastion)
+# Step 3: Hardening the App Server
+# This connection will automatically use the ProxyCommand from your hosts.ini
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
   vars:
     ntp_config_file: /etc/chrony.conf
-    # Disable the specific task that is failing if the path is still an issue
     os_security_kernel_enable_ntp: false
+    rhel9cis_bootloader_password: false
+    rhel9cis_setup_audit: true
   roles:
     - os_hardening
+    - ssh_hardening
+    - rhel9-cis
 
-# Step 4: Setup Web Entry Point
+# Step 4: Deploy Web Entry Point (Nginx)
 - name: Deploy Nginx
   hosts: bastion
   become: yes
   roles:
     - nginx_deploy
 
-# Step 5: Setup Internal App
+# Step 5: Deploy FastAPI Application
 - name: Deploy FastAPI
   hosts: app_servers
   become: yes

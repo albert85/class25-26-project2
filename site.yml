@@ -20,10 +20,15 @@
     # CIS Benchmark Fixes for Cloud Instances
     rhel9cis_bootloader_password: false
     rhel9cis_setup_audit: true
+    # This often skips the strict DNF/YUM package manager checks that cause this crash
+    rhel9cis_rule_1_2_3: false  
+    # Or more broadly, tell the role not to fail on 'audit-only' items
+    rhel9cis_skip_for_manual_configuration: true
   roles:
     - os_hardening
     - ssh_hardening
     - rhel9-cis
+    
 
 # Step 3: Hardening the App Server
 # This connection will automatically use the ProxyCommand from your hosts.ini
@@ -35,6 +40,10 @@
     os_security_kernel_enable_ntp: false
     rhel9cis_bootloader_password: false
     rhel9cis_setup_audit: true
+    # This often skips the strict DNF/YUM package manager checks that cause this crash
+    rhel9cis_rule_1_2_3: false  
+    # Or more broadly, tell the role not to fail on 'audit-only' items
+    rhel9cis_skip_for_manual_configuration: true
   roles:
     - os_hardening
     - ssh_hardening

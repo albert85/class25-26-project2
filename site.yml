@@ -1,12 +1,12 @@
 ---
 # Step 1: Ensure we can actually talk to the servers
-- name: Connectivity Check
-  hosts: all
-  gather_facts: no
-  tasks:
-    - name: Wait for SSH
-      wait_for_connection:
-        timeout: 60
+# - name: Connectivity Check
+#   hosts: all
+#   gather_facts: no
+#   tasks:
+#     - name: Wait for SSH
+#       wait_for_connection:
+#         timeout: 60
 
 # Step 2: Lockdown the Bastion
 - name: Hardening Bastion server

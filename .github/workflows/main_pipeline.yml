@@ -68,7 +68,7 @@ jobs:
           chmod 600 id_rsa
           
           # Run playbook
-          ansible-playbook -i inventories/staging/hosts.ini site.yml \
+          ansible-playbook -i inventories/staging/hosts.ini site.yml -vvv \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \

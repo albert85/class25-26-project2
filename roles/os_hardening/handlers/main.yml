@@ -1,0 +1,10 @@
+---
+- name: reload_firewall
+  ansible.builtin.service:
+    name: firewalld
+    state: reloaded
+
+- name: restart_chrony
+  ansible.builtin.service:
+    name: chrony
+    state: restarted

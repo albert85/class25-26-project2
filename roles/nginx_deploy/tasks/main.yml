@@ -1,0 +1,23 @@
+---
+# 1. Package Installation
+- name: Install security-essential and python packages
+  ansible.builtin.dnf:
+    name: 
+      - nginx
+    state: present
+    update_cache: yes
+
+
+- name: Deploy Nginx configuration
+  ansible.builtin.template:
+    src: nginx_fastapi.conf.j2
+    dest: /etc/nginx/conf.d/fastapi.conf
+    mode: '0644'
+  notify: Reload Nginx
+
+- name: Ensure FastAPI and Nginx are running
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  loop: [nginx]

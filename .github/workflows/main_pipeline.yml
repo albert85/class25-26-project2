@@ -36,6 +36,11 @@ jobs:
   deploy_ansible:
     needs: security_scans
     runs-on: ubuntu-latest
+    env:
+      server_name: ${{ secrets.SERVER_NAME }}
+      app_servers_IP: ${{ secrets.APP_SERVERS_IP }}
+      bastion_IP: ${{ secrets.BASTION_IP }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -65,10 +70,11 @@ jobs:
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \
-            --ssh-common-args='-o StrictHostKeyChecking=no'
+            --ssh-common-args='-o StrictHostKeyChecking=no \
+            --extra-vars "server_name=${{ secrets.SERVER_NAME }} app_servers_IP=${{ secrets.APP_SERVERS_IP }}"'
 
       - name: Verify Deployment (Smoke Test)
         run: |
           echo "Waiting for services to start..."
           sleep 15
-          curl -s --head http://${{ secrets.INSTANCE_IP }} | grep "200 OK"
+          curl -s --head http://${{ secrets.BASTION_IP }} | grep "200 OK"

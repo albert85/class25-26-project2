@@ -3,43 +3,10 @@
 - name: Install security-essential and python packages
   ansible.builtin.dnf:
     name: 
-      - nginx
       - python3-pip
       - python3-devel
-      - chrony
-      - firewalld
-      - fail2ban
     state: present
     update_cache: yes
-
-# 2. Security Hardening: Firewall
-- name: Ensure firewalld is running
-  ansible.builtin.service:
-    name: firewalld
-    state: started
-    enabled: yes
-
-- name: Allow SSH, HTTP, and HTTPS
-  ansible.posix.firewalld:
-    service: "{{ item }}"
-    permanent: yes
-    state: enabled
-  loop: [ssh, http, https]
-  notify: reload_firewall
-
-# 3. Security Hardening: Time Sync & Fail2Ban
-- name: Configure AWS Time Sync
-  ansible.builtin.lineinfile:
-    path: /etc/chrony/chrony.conf
-    line: "server 169.254.169.123 prefer iburst"
-    state: present
-  notify: restart_chrony
-
-- name: Ensure Fail2Ban is running
-  ansible.builtin.service:
-    name: fail2ban
-    state: started
-    enabled: yes
 
 # 4. Direct Code Sync (Creates directory automatically)
 - name: Sync all GitHub data to server
@@ -67,17 +34,10 @@
     mode: '0644'
   notify: Restart FastAPI
 
-- name: Deploy Nginx configuration
-  ansible.builtin.template:
-    src: nginx_fastapi.conf.j2
-    dest: /etc/nginx/conf.d/fastapi.conf
-    mode: '0644'
-  notify: Reload Nginx
-
 # 7. Final Service Activation
 - name: Ensure FastAPI and Nginx are running
   ansible.builtin.service:
     name: "{{ item }}"
     state: started
     enabled: yes
-  loop: [fastapi, nginx]
+  loop: [fastapi]

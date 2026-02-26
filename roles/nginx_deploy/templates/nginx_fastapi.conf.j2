@@ -3,7 +3,7 @@ server {
     server_name {{ server_name }};
 
     location / {
-        proxy_pass http://{{ ansible_host }}:9000;
+        proxy_pass http://{{ app_servers_IP }}:8000;
 
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

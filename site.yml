@@ -1,39 +1,66 @@
 ---
 # Step 1: Connectivity Check
-# This ensures the EC2 instances are fully booted and reachable before hardening starts.
-- name: Connectivity Check
-  hosts: all
-  gather_facts: no
-  tasks:
-    - name: Wait for SSH to respond
-      ansible.builtin.wait_for_connection:
-        timeout: 60
+# Ensures the EC2 instances are fully reachable before starting heavy hardening tasks.
+# - name: Connectivity Check
+#   hosts: all
+#   gather_facts: no
+#   tasks:
+#     - name: Wait for SSH to respond
+#       ansible.builtin.wait_for_connection:
+#         timeout: 60
 
 # Step 2: Hardening the Bastion
-# Note: We use the names defined in your requirements.yml
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
+  
+  # Fix the dnf.conf issue BEFORE the CIS role audits it
+  pre_tasks:
+    - name: Pre-configure DNF for CIS compliance
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/dnf.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: yes
+        state: present
+      loop:
+        - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
+        - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
+
   vars:
-    # Path fix for Amazon Linux 2023 / RHEL
+    # Variables for your local os_hardening role
     ntp_config_file: /etc/chrony.conf
     os_security_kernel_enable_ntp: false
-    # CIS Benchmark adjustments for Cloud AMIs
+    
+    # Variables for the Galaxy rhel9-cis role
     rhel9cis_bootloader_password: false
     rhel9cis_setup_audit: true
     rhel9cis_rule_1_2_3: false  
     rhel9cis_skip_for_manual_configuration: true
-  roles:
-    - role: os_hardening
-    - role: ssh_hardening
-    - role: rhel9-cis
-      ignore_errors: yes  # Bypass the DNF/YUM "1 replacements made" audit failure
 
-# Step 3: Hardening the App Server
-# This connection automatically uses the ProxyCommand jump through the Bastion.
+  roles:
+    - role: os_hardening      # Uses your local roles/os_hardening/tasks/main.yml
+    - role: ssh_hardening     # Uses Galaxy dev-sec.ssh-hardening
+    - role: rhel9-cis         # Uses Galaxy RHEL9-CIS
+      ignore_errors: yes      # Safety net for remaining strict cloud-incompatible audits
+
+# Step 3: Hardening the App Server (Jump Host Logic)
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
+  
+  pre_tasks:
+    - name: Pre-configure DNF for CIS compliance
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/dnf.conf
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        create: yes
+        state: present
+      loop:
+        - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
+        - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
+
   vars:
     ntp_config_file: /etc/chrony.conf
     os_security_kernel_enable_ntp: false
@@ -41,20 +68,21 @@
     rhel9cis_setup_audit: true
     rhel9cis_rule_1_2_3: false
     rhel9cis_skip_for_manual_configuration: true
+
   roles:
     - role: os_hardening
     - role: ssh_hardening
     - role: rhel9-cis
       ignore_errors: yes
 
-# Step 4: Setup Web Entry Point (Local Role)
+# Step 4: Setup Web Entry Point
 - name: Deploy Nginx
   hosts: bastion
   become: yes
   roles:
     - role: nginx_deploy
 
-# Step 5: Setup Internal App (Local Role)
+# Step 5: Setup Internal App
 - name: Deploy FastAPI
   hosts: app_servers
   become: yes

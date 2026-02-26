@@ -1,22 +1,35 @@
 ---
+# Step 1: Ensure we can actually talk to the servers
+- name: Connectivity Check
+  hosts: all
+  gather_facts: no
+  tasks:
+    - name: Wait for SSH
+      wait_for_connection:
+        timeout: 60
+
+# Step 2: Lockdown the Bastion
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
   roles:
     - os_hardening
-  
+
+# Step 3: Lockdown the App Server (Via Bastion)
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
   roles:
     - os_hardening
 
+# Step 4: Setup Web Entry Point
 - name: Deploy Nginx
   hosts: bastion
   become: yes
   roles:
     - nginx_deploy
 
+# Step 5: Setup Internal App
 - name: Deploy FastAPI
   hosts: app_servers
   become: yes

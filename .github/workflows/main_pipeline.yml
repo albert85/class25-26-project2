@@ -55,23 +55,18 @@ jobs:
           ansible-galaxy install -r requirements.yml
       
       - name: Run Ansible Playbook
-        env:
-          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
-          SSH_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
         run: |
-          # 1. Create the secret files safely
-          echo "$VAULT_PASS" > .vault_pass
-          echo "$SSH_KEY" > id_rsa
+          # Create secrets
+          echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
+          echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > id_rsa
           chmod 600 id_rsa
           
-          # 2. Run the playbook with the corrected variables
+          # Run playbook
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \
-            --extra-vars "server_name=${{ secrets.SERVER_NAME }} \
-                          BASTION_PUBLIC_IP=${{ secrets.BASTION_IP }} \
-                          APP_PRIVATE_IP=${{ secrets.APP_SERVERS_IP }}"
+            --extra-vars "BASTION_PUBLIC_IP=${{ secrets.BASTION_IP }} APP_PRIVATE_IP=${{ secrets.APP_SERVERS_IP }}"
 
       - name: Verify Deployment (Smoke Test)
         run: |

@@ -55,6 +55,12 @@ jobs:
           ansible-galaxy install -r requirements.yml
       
       - name: Run Ansible Playbook
+        env:
+            # These must match the 'lookup' names in the hosts.ini
+            BASTION_IP: ${{ secrets.BASTION_IP }}
+            APP_IP: ${{ secrets.APP_SERVERS_IP }}
+            VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
+            SSH_KEY: ${{ secrets.AWS_SSH_PRIVATE_KEY }}
         run: |
           # Create secrets
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass

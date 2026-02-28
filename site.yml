@@ -12,6 +12,7 @@
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
+  ignore_errors: yes
   
   pre_tasks:
     - name: Ensure DNF configuration directory exists
@@ -51,6 +52,7 @@
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
+  ignore_errors: yes
   
   pre_tasks:
     - name: Ensure DNF configuration directory exists

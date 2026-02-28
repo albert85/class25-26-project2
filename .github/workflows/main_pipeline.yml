@@ -68,7 +68,7 @@ jobs:
           chmod 600 id_rsa
           
           # Execute playbook using the Bastion as a Proxy
-          ansible-playbook -i inventories/staging/hosts.ini site.yml -vvv \
+          ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \

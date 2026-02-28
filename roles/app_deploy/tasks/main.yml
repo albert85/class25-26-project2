@@ -9,13 +9,14 @@
     update_cache: yes
 
 # 4. Direct Code Sync (Creates directory automatically)
-- name: Sync all GitHub data to server
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/" # Syncs the whole repo where the playbook lives
+- name: Sync all GitHub data using rsync
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/"
     dest: /home/ec2-user/class25-26-project2/
-    owner: ec2-user
-    group: ec2-user
-    mode: '0755'
+    recursive: yes
+    delete: yes  # Keeps destination exactly like source
+    rsync_opts:
+      - "--exclude=.git"  # Skip the heavy git history
 
 # 5. Virtual Environment & Dependencies
 - name: Setup .venv and install requirements

@@ -17,6 +17,12 @@
   vars:
     ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=60"
 
+- name: Ensure .venv has correct permissions or is removed
+  ansible.builtin.file:
+    path: "/home/ec2-user/class25-26-project2/.venv"
+    state: absent
+  become: yes  # Run as root to ensure we can delete it regardless of owner
+
 # 5. Virtual Environment & Dependencies
 - name: Setup .venv and install requirements
   ansible.builtin.pip:

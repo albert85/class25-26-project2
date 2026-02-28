@@ -76,7 +76,7 @@
 
 # Step 4: Setup Web Entry Point
 - name: Deploy Nginx
-  hosts: bastion
+  hosts: app_servers
   become: yes
   roles:
     - role: nginx_deploy

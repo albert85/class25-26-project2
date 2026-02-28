@@ -9,14 +9,13 @@
     update_cache: yes
 
 # 4. Direct Code Sync (Creates directory automatically)
-- name: Sync all GitHub data using rsync
+- name: Sync data with rsync (fixed for timeouts)
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/"
     dest: /home/ec2-user/class25-26-project2/
-    recursive: yes
-    delete: yes  # Keeps destination exactly like source
-    rsync_opts:
-      - "--exclude=.git"  # Skip the heavy git history
+    use_ssh_args: yes  # Forces rsync to use your Ansible SSH settings
+  vars:
+    ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=60"
 
 # 5. Virtual Environment & Dependencies
 - name: Setup .venv and install requirements

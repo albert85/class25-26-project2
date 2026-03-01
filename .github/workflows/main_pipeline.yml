@@ -58,21 +58,25 @@ jobs:
         env:
           BASTION_IP: ${{ secrets.BASTION_IP }}
           APP_IP: ${{ secrets.APP_SERVERS_IP }}
-          VAULT_PASS: ${{ secrets.ANSIBLE_VAULT_PASSWORD }}
-          # The key to reaching the private subnet:
-          ANSIBLE_SSH_COMMON_ARGS: "-o ProxyCommand='ssh -W %h:%p -q -o StrictHostKeyChecking=no -i id_rsa ec2-user@${{ secrets.BASTION_IP }}'"
+          # We define the arguments here, but ensure they point to the correct path
+          ANSIBLE_SSH_COMMON_ARGS: "-o ProxyCommand='ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}' -o StrictHostKeyChecking=no"
         run: |
-          # Write secrets to temporary files
+          # 1. Create the necessary files
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > id_rsa
           chmod 600 id_rsa
           
-          # Execute playbook using the Bastion as a Proxy
+          # 2. Execute the playbook
+          # We pass the env variable into the extra-vars using single quotes to preserve the internal spaces
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \
-            --extra-vars "ansible_ssh_common_args=\"$ANSIBLE_SSH_COMMON_ARGS\" BASTION_IP=${{ secrets.BASTION_IP }} APP_IP=${{ secrets.APP_SERVERS_IP }} server_name=${{ secrets.SERVER_NAME }} app_servers_IP=${{ secrets.APP_SERVERS_IP }}"
+            --extra-vars "ansible_ssh_common_args='$ANSIBLE_SSH_COMMON_ARGS' 
+                          BASTION_IP=${{ secrets.BASTION_IP }} 
+                          APP_IP=${{ secrets.APP_SERVERS_IP }} 
+                          server_name=${{ secrets.SERVER_NAME }} 
+                          app_servers_IP=${{ secrets.APP_SERVERS_IP }}"
 
       # - name: Verify Deployment (Smoke Test)
       #   run: |

@@ -23,80 +23,80 @@
   roles:
     - role: app_deploy
 
-# Step 3: Hardening the Bastion
-- name: Hardening Bastion server
-  hosts: bastion
-  become: yes
-  ignore_errors: yes
+# # Step 3: Hardening the Bastion
+# - name: Hardening Bastion server
+#   hosts: bastion
+#   become: yes
+#   ignore_errors: yes
   
-  pre_tasks:
-    - name: Ensure DNF configuration directory exists
-      ansible.builtin.file:
-        path: /etc/dnf
-        state: directory
-        mode: '0755'
+#   pre_tasks:
+#     - name: Ensure DNF configuration directory exists
+#       ansible.builtin.file:
+#         path: /etc/dnf
+#         state: directory
+#         mode: '0755'
 
-    - name: Pre-configure DNF for CIS compliance
-      ansible.builtin.lineinfile:
-        path: /etc/dnf/dnf.conf
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-        create: yes
-        state: present
-        mode: '0644'
-      loop:
-        - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
-        - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
+#     - name: Pre-configure DNF for CIS compliance
+#       ansible.builtin.lineinfile:
+#         path: /etc/dnf/dnf.conf
+#         regexp: "{{ item.regexp }}"
+#         line: "{{ item.line }}"
+#         create: yes
+#         state: present
+#         mode: '0644'
+#       loop:
+#         - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
+#         - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
 
-  vars:
-    ntp_config_file: /etc/chrony.conf
-    os_security_kernel_enable_ntp: false
-    # CIS Logic Fixes
-    rhel9cis_section1_patch_management: false  
-    rhel9cis_rule_1_2_3: false
-    rhel9cis_skip_for_manual_configuration: true
-    rhel9cis_bootloader_password: false
-    rhel9cis_setup_audit: true
+#   vars:
+#     ntp_config_file: /etc/chrony.conf
+#     os_security_kernel_enable_ntp: false
+#     # CIS Logic Fixes
+#     rhel9cis_section1_patch_management: false  
+#     rhel9cis_rule_1_2_3: false
+#     rhel9cis_skip_for_manual_configuration: true
+#     rhel9cis_bootloader_password: false
+#     rhel9cis_setup_audit: true
 
-  roles:
-    - role: os_hardening      
-    - role: ssh_hardening     
-    - { role: rhel9-cis, ignore_errors: yes }
+#   roles:
+#     - role: os_hardening      
+#     - role: ssh_hardening     
+#     - { role: rhel9-cis, ignore_errors: yes }
 
-# Step 4: Hardening the App Server
-- name: OS Hardening Application servers
-  hosts: app_servers
-  become: yes
-  ignore_errors: yes
+# # Step 4: Hardening the App Server
+# - name: OS Hardening Application servers
+#   hosts: app_servers
+#   become: yes
+#   ignore_errors: yes
   
-  pre_tasks:
-    - name: Ensure DNF configuration directory exists
-      ansible.builtin.file:
-        path: /etc/dnf
-        state: directory
-        mode: '0755'
+#   pre_tasks:
+#     - name: Ensure DNF configuration directory exists
+#       ansible.builtin.file:
+#         path: /etc/dnf
+#         state: directory
+#         mode: '0755'
 
-    - name: Pre-configure DNF for CIS compliance
-      ansible.builtin.lineinfile:
-        path: /etc/dnf/dnf.conf
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-        create: yes
-        state: present
-        mode: '0644'
-      loop:
-        - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
-        - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
+#     - name: Pre-configure DNF for CIS compliance
+#       ansible.builtin.lineinfile:
+#         path: /etc/dnf/dnf.conf
+#         regexp: "{{ item.regexp }}"
+#         line: "{{ item.line }}"
+#         create: yes
+#         state: present
+#         mode: '0644'
+#       loop:
+#         - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
+#         - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
 
-  vars:
-    ntp_config_file: /etc/chrony.conf
-    os_security_kernel_enable_ntp: false
-    rhel9cis_section1_patch_management: false
-    rhel9cis_rule_1_2_3: false
-    rhel9cis_skip_for_manual_configuration: true
-    rhel9cis_bootloader_password: false
+#   vars:
+#     ntp_config_file: /etc/chrony.conf
+#     os_security_kernel_enable_ntp: false
+#     rhel9cis_section1_patch_management: false
+#     rhel9cis_rule_1_2_3: false
+#     rhel9cis_skip_for_manual_configuration: true
+#     rhel9cis_bootloader_password: false
 
-  roles:
-    - role: os_hardening
-    - role: ssh_hardening
-    - { role: rhel9-cis, ignore_errors: yes }
+#   roles:
+#     - role: os_hardening
+#     - role: ssh_hardening
+#     - { role: rhel9-cis, ignore_errors: yes }

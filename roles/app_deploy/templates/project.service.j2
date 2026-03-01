@@ -8,7 +8,7 @@ Group=ec2-user
 WorkingDirectory=/home/ec2-user/class25-26-project2
 
 
-ExecStart=/home/ec2-user/class25-26-project2/.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+ExecStart=/home/ec2-user/class25-26-project2/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 Restart =always
 RestartSec=5

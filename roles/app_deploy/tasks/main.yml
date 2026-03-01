@@ -37,6 +37,8 @@
   become: yes
 # --- FIX END ---
 
+
+
 # 5. Virtual Environment & Dependencies
 - name: Setup .venv and install requirements
   ansible.builtin.pip:
@@ -54,6 +56,16 @@
     mode: '0644'
   become: yes # Crucial: only root can write to /etc/systemd/system/
   notify: Restart FastAPI
+
+- name: Fix SELinux context for hardened instance
+  ansible.builtin.shell: chcon -t bin_t -R /home/ec2-user/class25-26-project2/
+  become: yes
+
+- name: Ensure uvicorn/python is executable
+  ansible.builtin.file:
+    path: /home/ec2-user/class25-26-project2/.venv/bin/python
+    mode: '0755'
+  become: yes
 
 # 7. Final Service Activation
 - name: Force systemd to reload configs

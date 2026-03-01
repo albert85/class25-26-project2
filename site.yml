@@ -8,7 +8,22 @@
       ansible.builtin.wait_for_connection:
         timeout: 60
 
-# Step 2: Hardening the Bastion
+
+# Step 1: Setup Web Entry Point
+- name: Deploy Nginx
+  hosts: app_servers
+  become: yes
+  roles:
+    - role: nginx_deploy
+
+# Step 2: Setup Internal App
+- name: Deploy FastAPI
+  hosts: app_servers
+  become: yes
+  roles:
+    - role: app_deploy
+
+# Step 3: Hardening the Bastion
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
@@ -48,7 +63,7 @@
     - role: ssh_hardening     
     - { role: rhel9-cis, ignore_errors: yes }
 
-# Step 3: Hardening the App Server
+# Step 4: Hardening the App Server
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
@@ -85,17 +100,3 @@
     - role: os_hardening
     - role: ssh_hardening
     - { role: rhel9-cis, ignore_errors: yes }
-
-# Step 4: Setup Web Entry Point
-- name: Deploy Nginx
-  hosts: app_servers
-  become: yes
-  roles:
-    - role: nginx_deploy
-
-# Step 5: Setup Internal App
-- name: Deploy FastAPI
-  hosts: app_servers
-  become: yes
-  roles:
-    - role: app_deploy

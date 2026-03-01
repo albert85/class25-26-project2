@@ -77,6 +77,8 @@ jobs:
             -u ec2-user \
             --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}\"' \
                           BASTION_IP=${{ secrets.BASTION_IP }} \
+                          server_name=${{ secrets.SERVER_NAME }} \
+                          app_servers_IP=${{ secrets.APP_SERVERS_IP }}" \
                           APP_IP=${{ secrets.APP_SERVERS_IP }}" \
             --limit 'all:!bastion_host' # This prevents trying to proxy to the bastion itself
 

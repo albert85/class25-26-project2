@@ -69,7 +69,7 @@ jobs:
           chmod 600 id_rsa
           
           # Fixed the quoting mismatch in extra-vars below
-          ansible-book -i inventories/staging/hosts.ini site.yml \
+          ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \

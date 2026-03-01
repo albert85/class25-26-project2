@@ -51,14 +51,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1 # <-- Ensure this matches your AWS region
 
-      - name: Whitelist Runner IP in Bastion Security Group
-        id: whitelist
-        run: |
-          GITHUB_IP=$(curl -s https://api.ipify.org)
-          echo "runner_ip=${GITHUB_IP}" >> $GITHUB_OUTPUT
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${{ secrets.BASTION_IP }} \
-            --protocol tcp --port 22 --cidr ${GITHUB_IP}/32
 
       - name: Install Ansible & Dependencies
         run: |

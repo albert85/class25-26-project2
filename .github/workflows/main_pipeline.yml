@@ -37,58 +37,58 @@ jobs:
     needs: security_scans
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
         with: { python-version: '3.10' }
       
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Cache Ansible Roles
+        uses: actions/cache@v3
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1 # <-- Ensure this matches your AWS region
-
+          path: ~/.ansible/roles
+          key: ${{ runner.os }}-ansible-roles-${{ hashFiles('requirements.yml') }}
 
       - name: Install Ansible & Dependencies
         run: |
           pip install ansible boto3 botocore
           [ -f requirements.yml ] && ansible-galaxy install -r requirements.yml --force || echo "No requirements.yml found"
       
+      - name: Get GitHub Runner IP
+        id: ip
+        run: echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
+
+      
       - name: Run Ansible Playbook (Jump Host Tunnel)
         env:
           BASTION_IP: ${{ secrets.BASTION_IP }}
+          APP_IP: ${{ secrets.APP_SERVERS_IP }}
+          # We define the arguments here, but ensure they point to the correct path
+          ANSIBLE_SSH_COMMON_ARGS: "-o ProxyCommand='ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}' -o StrictHostKeyChecking=no"
         run: |
-          # Create temporary credential files
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > id_rsa
           chmod 600 id_rsa
           
-          # Execute Ansible
-          # We use ProxyCommand to bridge the gap between the Runner -> Bastion -> Private Instance
+          # Target only the app_servers for the proxy argument
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \
-            --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}\" -o StrictHostKeyChecking=no' \
+            --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}\"' \
                           BASTION_IP=${{ secrets.BASTION_IP }} \
                           server_name=${{ secrets.SERVER_NAME }} \
                           app_servers_IP=${{ secrets.APP_SERVERS_IP }} \
-                          APP_IP=${{ secrets.APP_SERVERS_IP }}" \
-            --limit 'all:!bastion_host'
+                          APP_IP="${{ secrets.APP_SERVERS_IP }}" \
+            --limit 'all:!bastion_host' # This prevents trying to proxy to the bastion itself
 
-      - name: Revoke Runner IP & Cleanup (Always Runs)
+      # - name: Verify Deployment (Smoke Test)
+      #   run: |
+      #     echo "Checking connectivity to Bastion endpoint..."
+      #     timeout 60s bash -c 'until curl -s --head http://${{ secrets.BASTION_IP }} | grep "200 OK"; do sleep 5; done'
+
+      - name: Cleanup Secrets
         if: always()
         run: |
-          # Remove the temporary IP permission from AWS
-          GITHUB_IP=${{ steps.whitelist.outputs.runner_ip }}
-          if [ ! -z "$GITHUB_IP" ]; then
-            aws ec2 revoke-security-group-ingress \
-              --group-id ${{ secrets.BASTION_SG_ID }} \
-              --protocol tcp --port 22 --cidr ${GITHUB_IP}/32
-          fi
-          # Delete sensitive files
           rm -f .vault_pass id_rsa
-          echo "Cleanup complete."
+          echo "Sensitive files removed."

@@ -10,23 +10,32 @@
     update_cache: yes
   become: yes
 
-# 4. Direct Code Sync (Creates directory automatically)
-- name: Sync data with rsync (fixed for timeouts)
+# 4. Direct Code Sync
+- name: Sync data with rsync
   ansible.posix.synchronize:
     src: "{{ playbook_dir }}/"
     dest: /home/ec2-user/class25-26-project2/
-    use_ssh_args: yes  # Forces rsync to use your Ansible SSH settings
+    use_ssh_args: yes
   vars:
     ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=60"
 
-- name: Fix project directory ownership
+# --- FIX START ---
+- name: Allow systemd to traverse the home directory
+  ansible.builtin.file:
+    path: /home/ec2-user
+    mode: '0755'  # Adds the +x bit so systemd can enter the folder
+  become: yes
+
+- name: Fix project directory ownership and execution bits
   ansible.builtin.file:
     path: "/home/ec2-user/class25-26-project2/"
     owner: ec2-user
     group: ec2-user
+    mode: '0755'  # Ensures the folder is accessible
     state: directory
     recurse: yes
-  become: yes  # Runs as root to fix the permissions for ec2-user
+  become: yes
+# --- FIX END ---
 
 # 5. Virtual Environment & Dependencies
 - name: Setup .venv and install requirements
@@ -37,18 +46,24 @@
   become: yes
   become_user: ec2-user
 
-# 6. Service & Nginx Deployment (Templates)
+# 6. Service & Nginx Deployment
 - name: Deploy FastAPI systemd service
   ansible.builtin.template:
     src: project.service.j2
     dest: /etc/systemd/system/fastapi.service
     mode: '0644'
+  become: yes # Crucial: only root can write to /etc/systemd/system/
   notify: Restart FastAPI
 
 # 7. Final Service Activation
-- name: Ensure FastAPI and Nginx are running
+- name: Force systemd to reload configs
+  ansible.builtin.systemd:
+    daemon_reload: yes
+  become: yes
+
+- name: Ensure FastAPI is running
   ansible.builtin.service:
-    name: "{{ item }}"
+    name: fastapi
     state: started
     enabled: yes
-  loop: [fastapi]
+  become: yes

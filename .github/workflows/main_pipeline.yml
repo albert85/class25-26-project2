@@ -58,16 +58,6 @@ jobs:
         id: ip
         run: echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
 
-      - name: Whitelist Runner IP
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_DEFAULT_REGION: "eu-north-1" # <--- Change this to your actual region
-        run: |
-          GITHUB_IP=$(curl -s https://api.ipify.org)
-          aws ec2 authorize-security-group-ingress \
-            --group-id ${{ secrets.BASTION_IP }} \
-            --protocol tcp --port 22 --cidr ${GITHUB_IP}/32
       
       - name: Run Ansible Playbook (Jump Host Tunnel)
         env:

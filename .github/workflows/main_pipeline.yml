@@ -54,6 +54,17 @@ jobs:
           pip install ansible boto3 botocore
           [ -f requirements.yml ] && ansible-galaxy install -r requirements.yml --force || echo "No requirements.yml found"
       
+      - name: Get GitHub Runner IP
+        id: ip
+        run: echo "ipv4=$(curl -s https://api.ipify.org)" >> $GITHUB_OUTPUT
+
+      # If using AWS, for example:
+      - name: Whitelist Runner IP
+        run: |
+          aws ec2 authorize-security-group-ingress \
+            --group-id ${{ secrets.BASTION_IP }} \
+            --protocol tcp --port 22 --cidr ${{ steps.ip.outputs.ipv4 }}/32
+      
       - name: Run Ansible Playbook (Jump Host Tunnel)
         env:
           BASTION_IP: ${{ secrets.BASTION_IP }}

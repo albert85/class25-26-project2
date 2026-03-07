@@ -24,23 +24,49 @@
   loop: [ssh, http, https]
   notify: reload_firewall
 
-# 3. Security Hardening: Time Sync (FIXED PATH)
+- name: Allow internal VPC traffic (Ensures ALB access)
+  ansible.posix.firewalld:
+    # This uses the variable passed from GitHub Secrets
+    source: "{{ target_vpc_cidr }}"
+    zone: trusted
+    state: enabled
+    permanent: yes
+  notify: reload_firewall
+
+- name: Force immediate firewall reload
+  ansible.builtin.meta: flush_handlers
+
+# 3. Security Hardening: Time Sync
 - name: Configure AWS Time Sync
   ansible.builtin.lineinfile:
-    path: /etc/chrony.conf  # <--- FIXED: Amazon Linux uses /etc/chrony.conf
+    path: /etc/chrony.conf
     line: "server 169.254.169.123 prefer iburst"
     state: present
   notify: restart_chrony
 
 # 4. Ensure Fail2Ban is running
-- name: Create local fail2ban config if missing
+- name: Create local fail2ban config with VPC whitelist
   ansible.builtin.copy:
-    content: "[DEFAULT]\nignorself = true"
+    # Use the variable here to prevent Fail2Ban from banning the ALB
+    content: |
+      [DEFAULT]
+      ignorself = true
+      ignoreip = 127.0.0.1/8 {{ target_vpc_cidr }}
     dest: /etc/fail2ban/jail.local
-    force: no
+    force: yes
 
 - name: Ensure Fail2Ban is running
   ansible.builtin.service:
     name: fail2ban
     state: started
     enabled: yes
+
+  handlers:
+    - name: reload_firewall
+      ansible.builtin.service:
+        name: firewalld
+        state: reloaded
+    - name: restart_chrony
+      ansible.builtin.service:
+        name: chrony
+        state: restarted

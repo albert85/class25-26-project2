@@ -62,18 +62,19 @@ jobs:
         env:
           BASTION_IP: ${{ secrets.BASTION_IP }}
           APP_IP: ${{ secrets.APP_SERVERS_IP }}
-          ANSIBLE_SSH_COMMON_ARGS: "-o ProxyCommand='ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}' -o StrictHostKeyChecking=no"
+          VPC_CIDR: ${{ secrets.VPC_CIDR_BLOCK }}
         run: |
           echo "${{ secrets.ANSIBLE_VAULT_PASSWORD }}" > .vault_pass
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > id_rsa
           chmod 600 id_rsa
           
-          # Fixed the quoting mismatch in extra-vars below
+          # We pass 'target_vpc_cidr' here so the OS-hardening tasks can whitelist it
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
             --private-key id_rsa \
             -u ec2-user \
             --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}\"' \
+                          target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
                           BASTION_IP=${{ secrets.BASTION_IP }} \
                           server_name=${{ secrets.SERVER_NAME }} \
                           app_servers_IP=${{ secrets.APP_SERVERS_IP }} \

@@ -68,12 +68,16 @@ jobs:
           echo "${{ secrets.AWS_SSH_PRIVATE_KEY }}" > id_rsa
           chmod 600 id_rsa
           
-          # We pass 'target_vpc_cidr' here so the OS-hardening tasks can whitelist it
+          # 1. Start the SSH Agent and add the key
+          eval $(ssh-agent -s)
+          ssh-add id_rsa
+          
+          # 2. Run Ansible. Note: We use -o ForwardAgent=yes so the Bastion 
+          # can use the Runner's key to talk to the App Nodes.
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
             --vault-password-file .vault_pass \
-            --private-key id_rsa \
             -u ec2-user \
-            --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -i id_rsa -W %h:%p -q -o StrictHostKeyChecking=no ec2-user@${{ secrets.BASTION_IP }}\"' \
+            --extra-vars "ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %h:%p -q -o StrictHostKeyChecking=no -o ForwardAgent=yes ec2-user@${{ secrets.BASTION_IP }}\"' \
                           target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
                           BASTION_IP=${{ secrets.BASTION_IP }} \
                           server_name=${{ secrets.SERVER_NAME }} \

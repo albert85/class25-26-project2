@@ -79,7 +79,7 @@ jobs:
                           server_name=${{ secrets.SERVER_NAME }} \
                           app_servers_IP=${{ secrets.APP_SERVERS_IP }} \
                           APP_IP=${{ secrets.APP_SERVERS_IP }}" \
-            --limit 'all:!bastion_host'
+            --limit 'all:!bastion'
 
       - name: Cleanup Secrets
         if: always()

@@ -50,14 +50,14 @@
         src: /tmp/offline-packages/
         dest: /tmp/offline-packages/
         mode: pull
-      delegate_to: bastion_host
+      delegate_to: bastion
 
     - name: Copy project repo from bastion
       ansible.posix.synchronize:
         src: /tmp/project/
         dest: /var/www/project/
         mode: pull
-      delegate_to: bastion_host
+      delegate_to: bastion
 
 
 # Step 4: Install Nginx offline on Private Servers

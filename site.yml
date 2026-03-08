@@ -30,9 +30,10 @@
       ansible.builtin.git:
         repo: https://github.com/albert85/class25-26-project2.git
         dest: /tmp/project
+        force: yes
 
 
-# Step 3: Copy packages to Private App Servers
+# Step 3: Transfer files from Bastion to App Servers
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
@@ -45,16 +46,18 @@
         state: directory
 
     - name: Copy nginx rpms from bastion
-      ansible.builtin.copy:
+      ansible.posix.synchronize:
         src: /tmp/offline-packages/
         dest: /tmp/offline-packages/
-        remote_src: yes
+        mode: pull
+      delegate_to: bastion
 
-    - name: Copy project from bastion
-      ansible.builtin.copy:
+    - name: Copy project repo from bastion
+      ansible.posix.synchronize:
         src: /tmp/project/
         dest: /var/www/project/
-        remote_src: yes
+        mode: pull
+      delegate_to: bastion
 
 
 # Step 4: Install Nginx offline on Private Servers
@@ -73,6 +76,7 @@
 - name: Deploy FastAPI
   hosts: app_servers
   become: yes
+
   roles:
     - role: app_deploy
 
@@ -98,7 +102,6 @@
         line: "{{ item.line }}"
         create: yes
         state: present
-        mode: '0644'
       loop:
         - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
         - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
@@ -115,7 +118,7 @@
   roles:
     - role: os_hardening
     - role: ssh_hardening
-    - { role: rhel9-cis, ignore_errors: yes }
+    - role: rhel9-cis
 
 
 # Step 7: Hardening Application Servers
@@ -136,7 +139,7 @@
   roles:
     - role: os_hardening
     - role: ssh_hardening
-    - { role: rhel9-cis, ignore_errors: yes }
+    - role: rhel9-cis
 
   post_tasks:
 

@@ -3,28 +3,27 @@
 - name: Connectivity Check
   hosts: bastion
   gather_facts: no
-
   tasks:
     - name: Wait for SSH to respond
       ansible.builtin.wait_for_connection:
         timeout: 60
 
-
 # Step 2: Prepare packages on Bastion (HAS INTERNET)
 - name: Prepare packages on bastion
   hosts: bastion
   become: yes
-
   tasks:
-
     - name: Ensure package directory exists
       ansible.builtin.file:
         path: /tmp/offline-packages
         state: directory
+        mode: '0755'
 
     - name: Download nginx and dependencies
       ansible.builtin.command:
         cmd: dnf install nginx --downloadonly --downloaddir=/tmp/offline-packages
+      register: download_result
+      changed_when: "'already installed' not in download_result.stdout"
 
     - name: Clone project repository
       ansible.builtin.git:
@@ -32,63 +31,55 @@
         dest: /tmp/project
         force: yes
 
-
 # Step 3: Transfer files from Bastion to App Servers
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
-
   tasks:
-
     - name: Ensure package directory exists
       ansible.builtin.file:
         path: /tmp/offline-packages
         state: directory
+        mode: '0755'
 
     - name: Copy nginx rpms from bastion
       ansible.posix.synchronize:
         src: /tmp/offline-packages/
         dest: /tmp/offline-packages/
-        mode: pull
+        mode: push  # Changed to push as we are pushing from Bastion to App
+        use_ssh_args: yes  # IMPORTANT: Use the Agent Forwarding from the Runner
       delegate_to: bastion
 
     - name: Copy project repo from bastion
       ansible.posix.synchronize:
         src: /tmp/project/
         dest: /var/www/project/
-        mode: pull
+        mode: push
+        use_ssh_args: yes # IMPORTANT: Use the Agent Forwarding from the Runner
       delegate_to: bastion
-
 
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline
   hosts: app_servers
   become: yes
-
   tasks:
-
     - name: Install nginx from local packages
       ansible.builtin.shell: |
         dnf install -y /tmp/offline-packages/*.rpm
-
 
 # Step 5: Deploy FastAPI App
 - name: Deploy FastAPI
   hosts: app_servers
   become: yes
-
   roles:
     - role: app_deploy
-
 
 # Step 6: Hardening Bastion
 - name: Hardening Bastion server
   hosts: bastion
   become: yes
   ignore_errors: yes
-
   pre_tasks:
-
     - name: Ensure DNF configuration directory exists
       ansible.builtin.file:
         path: /etc/dnf
@@ -120,13 +111,11 @@
     - role: ssh_hardening
     - role: rhel9-cis
 
-
 # Step 7: Hardening Application Servers
 - name: OS Hardening Application servers
   hosts: app_servers
   become: yes
   ignore_errors: yes
-
   vars:
     firewall_allow_sources: ["{{ target_vpc_cidr }}"]
     ntp_config_file: /etc/chrony.conf
@@ -142,8 +131,6 @@
     - role: rhel9-cis
 
   post_tasks:
-
-    # SELINUX FIX
     - name: Allow Nginx to proxy to FastAPI
       ansible.posix.seboolean:
         name: httpd_can_network_connect
@@ -157,7 +144,6 @@
         setype: http_port_t
         state: present
 
-    # FIREWALL RULES
     - name: Trust VPC CIDR
       ansible.posix.firewalld:
         source: "{{ target_vpc_cidr }}"
@@ -174,7 +160,6 @@
         permanent: yes
         immediate: yes
 
-    # FAIL2BAN
     - name: Configure Fail2Ban ignore list
       ansible.builtin.lineinfile:
         path: /etc/fail2ban/jail.local
@@ -189,7 +174,6 @@
         state: restarted
 
   handlers:
-
     - name: restart_fail2ban
       ansible.builtin.service:
         name: fail2ban

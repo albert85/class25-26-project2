@@ -14,24 +14,30 @@
     state: started
     enabled: yes
 
-- name: Allow SSH, HTTP, and HTTPS
+- name: Allow SSH, HTTP, and HTTPS in Public Zone
   ansible.posix.firewalld:
     service: "{{ item }}"
     permanent: yes
     state: enabled
+    zone: public
   loop: [ssh, http, https]
   notify: reload_firewall
 
-- name: Allow internal VPC traffic (Ensures ALB access)
+- name: Allow ALB Health Checks via Rich Rule (High Priority)
   ansible.posix.firewalld:
-    source: "{{ target_vpc_cidr }}"
-    zone: trusted
-    state: enabled
+    rich_rule: 'rule family="ipv4" source address="{{ target_vpc_cidr }}" port port="80" protocol="tcp" accept'
     permanent: yes
+    state: enabled
+    immediate: yes
   notify: reload_firewall
 
-- name: Force immediate firewall reload
-  ansible.builtin.meta: flush_handlers
+- name: Ensure Port 8000 is open for Nginx-to-FastAPI Proxy
+  ansible.posix.firewalld:
+    port: 8000/tcp
+    permanent: yes
+    state: enabled
+    immediate: yes
+  notify: reload_firewall
 
 # 3. Security Hardening: Time Sync
 - name: Configure AWS Time Sync
@@ -42,12 +48,18 @@
   notify: restart_chrony
 
 # 4. Security Hardening: Fail2Ban
+# 4. Security Hardening: Fail2Ban
 - name: Create local fail2ban config with VPC whitelist
   ansible.builtin.copy:
     content: |
       [DEFAULT]
       ignorself = true
       ignoreip = 127.0.0.1/8 {{ target_vpc_cidr }}
+      # Ensure fail2ban uses systemd journal on modern OS
+      backend = systemd
+
+      [sshd]
+      enabled = true
     dest: /etc/fail2ban/jail.local
     force: yes
 

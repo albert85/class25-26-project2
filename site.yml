@@ -135,8 +135,8 @@
       register: offline_dnf_result
 
   roles:
-    - role: os_hardening
-    - role: ssh_hardening
+    - {role: os_hardening, ignore_errors: yes }
+    - {role: ssh_hardening, ignore_errors: yes }
     - { role: rhel9-cis, ignore_errors: yes }
     - role: app_deploy
 

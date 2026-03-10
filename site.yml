@@ -41,73 +41,46 @@
 
 # Step 3: Transfer files from Bastion to App Servers
 # Step 3: Transfer files from Bastion to App Servers
+# Step 3: Bundle and Transfer (Bastion -> Runner -> App Node)
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
-  # We need facts from the Bastion to find the SSH Agent socket
   gather_facts: no 
   tasks:
-    - add_host:
-        name: app_node
-        ansible_host: "{{ APP_IP }}"
-        ansible_ssh_common_args: >-
-          -o StrictHostKeyChecking=no -o ProxyJump=ec2-user@{{ BASTION_IP }}
-    
-    - name: Ensure package directory exists on app_node
-      ansible.builtin.file:
-        path: /tmp/offline-packages
-        state: directory
-        mode: '0755'
-      # We delegate this to the bastion to ensure it reaches the private node
+    # 1. Zip everything on the Bastion into one file
+    - name: Archive packages and project on Bastion
+      community.general.archive:
+        path: 
+          - /tmp/offline-packages
+          - /tmp/project
+        dest: /tmp/bundle.tar.gz
+        format: gz
       delegate_to: bastion_node
-    
-   # 1. Find all RPM files on the Bastion
-    - name: List files on Bastion
-      ansible.builtin.find:
-        paths: /tmp/offline-packages
-        patterns: "*.rpm"
-      delegate_to: bastion_node
-      register: found_files
       run_once: true
 
-    # 2. Pull each file individually to the GitHub Runner
-    - name: Pull packages from Bastion to GitHub Runner
+    # 2. Pull the SINGLE zip file from Bastion to the GitHub Runner
+    - name: Fetch bundle to GitHub Runner
       ansible.builtin.fetch:
-        src: "{{ item.path }}"
-        dest: "buffer/rpms/"
+        src: /tmp/bundle.tar.gz
+        dest: /tmp/bundle.tar.gz
         flat: yes
       delegate_to: bastion_node
       run_once: true
-      loop: "{{ found_files.files }}"
 
-    # 3. Ensure the directory exists on the Private App Node
-    - name: Ensure directory exists on App Node
-      ansible.builtin.file:
-        path: /tmp/offline-packages
-        state: directory
-        mode: '0755'
-      become: yes
-
-    # 4. Push the entire buffer folder from Runner to App Node
-    - name: Push packages from Runner to App Node
+    # 3. Push the SINGLE zip file from Runner to the App Node
+    - name: Push bundle to App Node
       ansible.builtin.copy:
-        src: "buffer/rpms/"  # Note the trailing slash to copy contents
-        dest: "/tmp/offline-packages/"
-      become: yes
+        src: /tmp/bundle.tar.gz
+        dest: /tmp/bundle.tar.gz
+      # This uses the ProxyJump in your hosts.ini automatically
 
-    # - name: Copy RPMs from Bastion to App Node
-    #   ansible.builtin.copy:
-    #     src: /tmp/offline-packages/
-    #     dest: /tmp/offline-packages/
-    #     remote_src: yes
-    #   delegate_to: bastion_node
-
-    - name: Copy project repo from Bastion to App Node
-      ansible.builtin.copy:
-        src: /tmp/project/
-        dest: /tmp/project/
+    # 4. Unpack everything on the App Node
+    - name: Unarchive bundle on App Node
+      ansible.builtin.unarchive:
+        src: /tmp/bundle.tar.gz
+        dest: /tmp/
         remote_src: yes
-      delegate_to: bastion_node
+      become: yes
 
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline

@@ -75,106 +75,106 @@
     - role: app_deploy
 
 # Step 6: Hardening Bastion
-- name: Hardening Bastion server
-  hosts: bastion
-  become: yes
-  ignore_errors: yes
-  pre_tasks:
-    - name: Ensure DNF configuration directory exists
-      ansible.builtin.file:
-        path: /etc/dnf
-        state: directory
-        mode: '0755'
+# - name: Hardening Bastion server
+#   hosts: bastion
+#   become: yes
+#   ignore_errors: yes
+#   pre_tasks:
+#     - name: Ensure DNF configuration directory exists
+#       ansible.builtin.file:
+#         path: /etc/dnf
+#         state: directory
+#         mode: '0755'
 
-    - name: Pre-configure DNF for CIS compliance
-      ansible.builtin.lineinfile:
-        path: /etc/dnf/dnf.conf
-        regexp: "{{ item.regexp }}"
-        line: "{{ item.line }}"
-        create: yes
-        state: present
-      loop:
-        - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
-        - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
+#     - name: Pre-configure DNF for CIS compliance
+#       ansible.builtin.lineinfile:
+#         path: /etc/dnf/dnf.conf
+#         regexp: "{{ item.regexp }}"
+#         line: "{{ item.line }}"
+#         create: yes
+#         state: present
+#       loop:
+#         - { regexp: '^gpgcheck=', line: 'gpgcheck=1' }
+#         - { regexp: '^localpkg_gpgcheck=', line: 'localpkg_gpgcheck=1' }
 
-  vars:
-    ntp_config_file: /etc/chrony.conf
-    os_security_kernel_enable_ntp: false
-    rhel9cis_section1_patch_management: false
-    rhel9cis_rule_1_2_3: false
-    rhel9cis_skip_for_manual_configuration: true
-    rhel9cis_bootloader_password: false
-    rhel9cis_setup_audit: true
+#   vars:
+#     ntp_config_file: /etc/chrony.conf
+#     os_security_kernel_enable_ntp: false
+#     rhel9cis_section1_patch_management: false
+#     rhel9cis_rule_1_2_3: false
+#     rhel9cis_skip_for_manual_configuration: true
+#     rhel9cis_bootloader_password: false
+#     rhel9cis_setup_audit: true
 
-  roles:
-    - role: os_hardening
-    - role: ssh_hardening
-    - role: rhel9-cis
+#   roles:
+#     - role: os_hardening
+#     - role: ssh_hardening
+#     - role: rhel9-cis
 
-# Step 7: Hardening Application Servers
-- name: OS Hardening Application servers
-  hosts: app_servers
-  become: yes
-  ignore_errors: yes
-  vars:
-    firewall_allow_sources: ["{{ target_vpc_cidr }}"]
-    ntp_config_file: /etc/chrony.conf
-    os_security_kernel_enable_ntp: false
-    rhel9cis_section1_patch_management: false
-    rhel9cis_rule_1_2_3: false
-    rhel9cis_skip_for_manual_configuration: true
-    rhel9cis_bootloader_password: false
+# # Step 7: Hardening Application Servers
+# - name: OS Hardening Application servers
+#   hosts: app_servers
+#   become: yes
+#   ignore_errors: yes
+#   vars:
+#     firewall_allow_sources: ["{{ target_vpc_cidr }}"]
+#     ntp_config_file: /etc/chrony.conf
+#     os_security_kernel_enable_ntp: false
+#     rhel9cis_section1_patch_management: false
+#     rhel9cis_rule_1_2_3: false
+#     rhel9cis_skip_for_manual_configuration: true
+#     rhel9cis_bootloader_password: false
 
-  roles:
-    - role: os_hardening
-    - role: ssh_hardening
-    - role: rhel9-cis
+#   roles:
+#     - role: os_hardening
+#     - role: ssh_hardening
+#     - role: rhel9-cis
 
-  post_tasks:
-    - name: Allow Nginx to proxy to FastAPI
-      ansible.posix.seboolean:
-        name: httpd_can_network_connect
-        state: yes
-        persistent: yes
+#   post_tasks:
+#     - name: Allow Nginx to proxy to FastAPI
+#       ansible.posix.seboolean:
+#         name: httpd_can_network_connect
+#         state: yes
+#         persistent: yes
 
-    - name: Allow port 8000 for HTTP
-      community.general.seport:
-        ports: 8000
-        proto: tcp
-        setype: http_port_t
-        state: present
+#     - name: Allow port 8000 for HTTP
+#       community.general.seport:
+#         ports: 8000
+#         proto: tcp
+#         setype: http_port_t
+#         state: present
 
-    - name: Trust VPC CIDR
-      ansible.posix.firewalld:
-        source: "{{ target_vpc_cidr }}"
-        zone: trusted
-        state: enabled
-        permanent: yes
-        immediate: yes
+#     - name: Trust VPC CIDR
+#       ansible.posix.firewalld:
+#         source: "{{ target_vpc_cidr }}"
+#         zone: trusted
+#         state: enabled
+#         permanent: yes
+#         immediate: yes
 
-    - name: Allow HTTP
-      ansible.posix.firewalld:
-        service: http
-        zone: public
-        state: enabled
-        permanent: yes
-        immediate: yes
+#     - name: Allow HTTP
+#       ansible.posix.firewalld:
+#         service: http
+#         zone: public
+#         state: enabled
+#         permanent: yes
+#         immediate: yes
 
-    - name: Configure Fail2Ban ignore list
-      ansible.builtin.lineinfile:
-        path: /etc/fail2ban/jail.local
-        regexp: '^ignoreip ='
-        line: "ignoreip = 127.0.0.1/8 {{ target_vpc_cidr }}"
-        create: yes
-      notify: restart_fail2ban
+#     - name: Configure Fail2Ban ignore list
+#       ansible.builtin.lineinfile:
+#         path: /etc/fail2ban/jail.local
+#         regexp: '^ignoreip ='
+#         line: "ignoreip = 127.0.0.1/8 {{ target_vpc_cidr }}"
+#         create: yes
+#       notify: restart_fail2ban
 
-    - name: Restart Nginx
-      ansible.builtin.service:
-        name: nginx
-        state: restarted
+#     - name: Restart Nginx
+#       ansible.builtin.service:
+#         name: nginx
+#         state: restarted
 
-  handlers:
-    - name: restart_fail2ban
-      ansible.builtin.service:
-        name: fail2ban
-        state: restarted
+#   handlers:
+#     - name: restart_fail2ban
+#       ansible.builtin.service:
+#         name: fail2ban
+#         state: restarted

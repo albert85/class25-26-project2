@@ -8,7 +8,7 @@
       ansible.builtin.wait_for_connection:
         timeout: 60
 
-# Step 2: Prepare packages on Bastion (HAS INTERNET)
+# Step 2: Prepare packages on Bastion
 - name: Prepare packages on bastion
   hosts: bastion
   become: yes
@@ -42,7 +42,7 @@
 # Step 3: Transfer files from Bastion to App Servers
 - name: Transfer packages to private servers
   hosts: app_servers
-  become: no
+  become: yes
   gather_facts: no
   tasks:
     - name: Ensure package directory exists on app_node
@@ -50,34 +50,20 @@
         path: /tmp/offline-packages
         state: directory
         mode: '0755'
-      # We delegate to bastion because it's already "inside" the network
-      delegate_to: bastion_node
 
     - name: Copy nginx rpms from bastion to app_node
-      ansible.posix.synchronize:
+      ansible.builtin.copy:
         src: /tmp/offline-packages/
         dest: /tmp/offline-packages/
-        mode: push
-        use_ssh_args: yes
+        remote_src: yes  # This is the magic key for the copy module
       delegate_to: bastion_node
-      register: sync_result
-      vars:
-        # 1. We MUST nullify the key file so rsync doesn't try to find it on the Bastion
-        ansible_ssh_private_key_file: null
-        # 2. We ensure Agent Forwarding is explicitly on for this hop
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
 
     - name: Copy project repo from bastion to app_node
-      ansible.posix.synchronize:
+      ansible.builtin.copy:
         src: /tmp/project/
         dest: /tmp/project/
-        mode: push
-        use_ssh_args: yes
+        remote_src: yes
       delegate_to: bastion_node
-      register: sync_result
-      vars:
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
-        ansible_ssh_private_key_file: null
 
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline
@@ -87,8 +73,6 @@
     - name: Install nginx from local packages
       ansible.builtin.shell: |
         dnf install -y /tmp/offline-packages/*.rpm
-      args:
-        warn: false
 
 # Step 5: Deploy FastAPI App
 - name: Deploy FastAPI
@@ -96,5 +80,3 @@
   become: yes
   roles:
     - role: app_deploy
-
-# Optional: Uncomment Steps 6 & 7 once Step 5 is verified working.

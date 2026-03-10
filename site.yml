@@ -61,8 +61,10 @@
         use_ssh_args: yes
       delegate_to: bastion_node
       vars:
-        # Clear ProxyJump here: Bastion talks to app_node via private IP directly
+        # We REMOVE the -i ./id_rsa here because the key is in the AGENT
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
+        # We explicitly tell Ansible NOT to look for the key file for this delegated task
+        ansible_ssh_private_key_file: "" 
 
     - name: Copy project repo from bastion to app_node
       ansible.posix.synchronize:
@@ -73,7 +75,8 @@
       delegate_to: bastion_node
       vars:
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
-
+        ansible_ssh_private_key_file: ""
+        
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline
   hosts: app_servers

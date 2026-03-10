@@ -1,19 +1,13 @@
 ---
 # 1. Package Installation
-- name: Install base packages offline
-  hosts: app_servers
-  become: yes
-  gather_facts: no
-  tasks:
-    - name: Install RPMs strictly offline
-      ansible.builtin.shell: |
-        dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
-      register: shell_output
+- name: Install RPMs strictly offline
+  ansible.builtin.shell: |
+    dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
+  register: shell_output
 
-    - name: Print dnf output
-      ansible.builtin.debug:
-        var: shell_output.stdout_lines
-
+- name: Print dnf output
+  ansible.builtin.debug:
+    var: shell_output.stdout_lines
 
 - name: Deploy Nginx configuration
   ansible.builtin.template:

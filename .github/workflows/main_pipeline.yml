@@ -89,6 +89,7 @@ jobs:
           --extra-vars "target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
                 BASTION_IP=${{ secrets.BASTION_IP }} \
                 server_name=${{ secrets.SERVER_NAME }} \
+                app_servers_IP=${{ secrets.APP_SERVERS_IP }} \
                 APP_IP=${{ secrets.APP_SERVERS_IP }}"
                          
 

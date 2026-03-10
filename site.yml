@@ -15,65 +15,62 @@
   tasks:
     - name: Clean up old failed runs and DNF cache
       ansible.builtin.shell: |
-        # Force remove any recursive loops or stuck files
-        sudo rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
-        # Clear DNF metadata and cached packages to free space
+        rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
         dnf clean all
-        # Optional: Remove old logs if disk is still tight
         journalctl --vacuum-time=1d || true
       args:
         executable: /bin/bash
 
-    - name: Install git and dnf utilities
+    - name: Install base utilities and Python/Pip
       ansible.builtin.dnf:
         name: 
           - git
           - dnf-utils
           - tar
+          - python3
+          - python3-pip
+          - python3-devel
         state: present
 
-    - name: Ensure package directory exists
+    - name: Ensure package directories exist
       ansible.builtin.file:
-        path: /tmp/offline-packages
+        path: "{{ item }}"
         state: directory
         mode: '0755'
-
-    - name: Download nginx and dependencies
-      ansible.builtin.dnf:
-        name: nginx
-        state: latest
-        download_only: yes
-        download_dir: /tmp/offline-packages
+      loop:
+        - /tmp/offline-packages
+        - /tmp/offline-packages/python-wheels
 
     - name: Clone project repository
       ansible.builtin.git:
         repo: https://github.com/albert85/class25-26-project2.git
         dest: /tmp/project
         force: yes
-    
-      
-    - name: Download Python RPMs
-      ansible.builtin.dnf:
-        name: [python3, python3-pip, python3-devel]
-        download_only: yes
-        download_dir: /tmp/offline-packages
-      become: yes
 
     - name: Download Pip dependencies (Wheels)
       ansible.builtin.shell: |
-        pip3 download -r /tmp/project/requirements.txt -d /tmp/offline-packages/python-wheels
+        # Use python3 -m pip to ensure the correct path is used
+        python3 -m pip download -r /tmp/project/requirements.txt -d /tmp/offline-packages/python-wheels
       args:
         executable: /bin/bash
 
-# Step 3: Transfer files from Bastion to App Servers
-# Step 3: Transfer files from Bastion to App Servers
+    - name: Download Nginx and Python RPMs for App Node
+      ansible.builtin.dnf:
+        name: 
+          - nginx
+          - python3
+          - python3-pip
+          - python3-devel
+        state: latest
+        download_only: yes
+        download_dir: /tmp/offline-packages
+
 # Step 3: Bundle and Transfer (Bastion -> Runner -> App Node)
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
   gather_facts: no 
   tasks:
-    # 1. Zip everything on the Bastion into one file
     - name: Archive packages and project on Bastion
       community.general.archive:
         path: 
@@ -84,7 +81,6 @@
       delegate_to: bastion_node
       run_once: true
 
-    # 2. Pull the SINGLE zip file from Bastion to the GitHub Runner
     - name: Fetch bundle to GitHub Runner
       ansible.builtin.fetch:
         src: /tmp/bundle.tar.gz
@@ -93,14 +89,12 @@
       delegate_to: bastion_node
       run_once: true
 
-    # 3. Push the SINGLE zip file from Runner to the App Node
     - name: Push bundle to App Node
       ansible.builtin.copy:
         src: /tmp/bundle.tar.gz
         dest: /tmp/bundle.tar.gz
-      # This uses the ProxyJump in your hosts.ini automatically
+      become: yes
 
-    # 4. Unpack everything on the App Node
     - name: Unarchive bundle on App Node
       ansible.builtin.unarchive:
         src: /tmp/bundle.tar.gz
@@ -108,13 +102,13 @@
         remote_src: yes
       become: yes
 
-# Step 4: Install Nginx offline on Private Servers
-- name: Install nginx offline
+# Step 4: Install Nginx and Python offline on Private Servers
+- name: Install base packages offline
   hosts: app_servers
   become: yes
   gather_facts: no
   tasks:
-    - name: Install nginx strictly offline
+    - name: Install RPMs strictly offline
       ansible.builtin.shell: |
         dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
       register: shell_output

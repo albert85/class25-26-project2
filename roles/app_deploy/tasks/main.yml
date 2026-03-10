@@ -1,23 +1,36 @@
 ---
 # 1. Package Installation
-- name: Install security-essential and python packages
-  ansible.builtin.dnf:
-    name: 
-      - python3
-      - python3-pip
-      - python3-devel
-    state: present
-    update_cache: yes
+# 1. Package Installation (Offline)
+- name: Install python packages from local RPMs
+  ansible.builtin.shell: |
+    dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
   become: yes
 
-# 4. Direct Code Sync
-- name: Sync data with rsync
-  ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/"
+# # 4. Direct Code Sync
+# - name: Sync data with rsync
+#   ansible.posix.synchronize:
+#     src: "{{ playbook_dir }}/"
+#     dest: /home/ec2-user/class25-26-project2/
+#     use_ssh_args: yes
+#   vars:
+#     ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=60"
+
+# 4. Move Code from /tmp to Home
+- name: Ensure project directory exists in home
+  ansible.builtin.file:
+    path: /home/ec2-user/class25-26-project2
+    state: directory
+    owner: ec2-user
+    group: ec2-user
+    mode: '0755'
+
+- name: Sync data from /tmp to home
+  ansible.builtin.copy:
+    src: /tmp/project/
     dest: /home/ec2-user/class25-26-project2/
-    use_ssh_args: yes
-  vars:
-    ansible_ssh_extra_args: "-o StrictHostKeyChecking=no -o ConnectTimeout=60"
+    remote_src: yes
+    owner: ec2-user
+    group: ec2-user
 
 # --- FIX START ---
 - name: Allow systemd to traverse the home directory
@@ -40,11 +53,21 @@
 
 
 # 5. Virtual Environment & Dependencies
-- name: Setup .venv and install requirements
+# - name: Setup .venv and install requirements
+#   ansible.builtin.pip:
+#     requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
+#     virtualenv: "/home/ec2-user/class25-26-project2/.venv"
+#     virtualenv_command: python3 -m venv
+#   become: yes
+#   become_user: ec2-user
+
+# 5. Virtual Environment & Dependencies (Offline)
+- name: Setup .venv and install requirements offline
   ansible.builtin.pip:
     requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
     virtualenv: "/home/ec2-user/class25-26-project2/.venv"
-    virtualenv_command: python3 -m venv
+    # --no-index and --find-links force pip to stay offline
+    extra_args: "--no-index --find-links=/tmp/offline-packages/python-wheels"
   become: yes
   become_user: ec2-user
 

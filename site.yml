@@ -54,14 +54,14 @@
 
     - name: Copy nginx rpms from bastion to app_node
       ansible.builtin.copy:
-        src: /tmp/offline-packages/
+        src: /tmp/offline-packages
         dest: /tmp/offline-packages/
         remote_src: yes  # This is the magic key for the copy module
       delegate_to: bastion_node
 
     - name: Copy project repo from bastion to app_node
       ansible.builtin.copy:
-        src: /tmp/project/
+        src: /tmp/project
         dest: /tmp/project/
         remote_src: yes
       delegate_to: bastion_node

@@ -63,14 +63,11 @@
     
     - name: Pull packages from Bastion to GitHub Runner
       ansible.builtin.fetch:
-        src: "/tmp/offline-packages/{{ item }}"
-        dest: "buffer/{{ item }}"
+        src: "/tmp/offline-packages/"
+        dest: "buffer/"
         flat: yes
       delegate_to: bastion_node
       run_once: true
-      loop:
-        # List a few key RPMs or use a shell command to register them
-        - nginx.rpm 
 
     - name: Push packages from Runner to App Node
       ansible.builtin.copy:

@@ -20,10 +20,22 @@
         mode: '0755'
 
     - name: Download nginx and dependencies
-      ansible.builtin.command:
-        cmd: dnf install -y nginx --downloadonly --downloaddir=/tmp/offline-packages
-      register: download_result
-      changed_when: "'already installed' not in download_result.stdout"
+      ansible.builtin.dnf:
+        name: nginx
+        state: latest
+        download_only: yes
+        download_dir: /tmp/offline-packages
+    
+    - name: Install git
+      ansible.builtin.dnf:
+        name: git
+        state: present
+
+    - name: Ensure package directory exists
+      ansible.builtin.file:
+        path: /tmp/offline-packages
+        state: directory
+        mode: '0755'
 
     - name: Clone project repository
       ansible.builtin.git:

@@ -70,14 +70,14 @@ jobs:
           
           # 2. Run Playbook with ForwardAgent=yes
           # This allows the 'rsync' task on the Bastion to use the key in the Runner's agent
-          ansible-inventory -i inventories/staging/hosts.ini --graph \
-            --vault-password-file .vault_pass \
-            -u ec2-user \
-            --extra-vars "ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ForwardAgent=yes -o ProxyJump=ec2-user@${{ secrets.BASTION_IP }}' \
-                          target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
-                          BASTION_IP=${{ secrets.BASTION_IP }} \
-                          server_name=${{ secrets.SERVER_NAME }} \
-                          APP_IP=${{ secrets.APP_SERVERS_IP }}"
+          ansible-playbook -i inventories/staging/hosts.ini site.yml \
+          --vault-password-file .vault_pass \
+          -u ec2-user \
+          --extra-vars "ansible_ssh_common_args='-o StrictHostKeyChecking=no -o ForwardAgent=yes -o ProxyJump=ec2-user@${{ secrets.BASTION_IP }}' \
+                        target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
+                        BASTION_IP=${{ secrets.BASTION_IP }} \
+                        server_name=${{ secrets.SERVER_NAME }} \
+                        APP_IP=${{ secrets.APP_SERVERS_IP }}"
                          
 
       - name: Cleanup Secrets

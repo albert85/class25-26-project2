@@ -50,7 +50,7 @@
         path: /tmp/offline-packages
         state: directory
         mode: '0755'
-        delegate_to: bastion_node
+      delegate_to: bastion_node
 
     - name: Copy nginx rpms from bastion to app_node
       ansible.builtin.copy:

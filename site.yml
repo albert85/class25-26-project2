@@ -42,7 +42,7 @@
 # Step 3: Transfer files from Bastion to App Servers
 - name: Transfer packages to private servers
   hosts: app_servers
-  become: yes
+  become: no
   gather_facts: no
   tasks:
     - name: Ensure package directory exists on app_node

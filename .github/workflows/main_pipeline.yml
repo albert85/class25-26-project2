@@ -71,6 +71,10 @@ jobs:
 
           # Add this to verify the key is loaded
           ssh-add -l
+
+          # Crucial: Export the variables so all sub-processes see the Agent
+          export SSH_AUTH_SOCK=$SSH_AUTH_SOCK
+          export SSH_AGENT_PID=$SSH_AGENT_PID
           
           # 2. Run Playbook with ForwardAgent=yes
           # This allows the 'rsync' task on the Bastion to use the key in the Runner's agent

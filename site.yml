@@ -60,11 +60,12 @@
         mode: push
         use_ssh_args: yes
       delegate_to: bastion_node
+      register: sync_result
       vars:
-        # We REMOVE the -i ./id_rsa here because the key is in the AGENT
+        # 1. We MUST nullify the key file so rsync doesn't try to find it on the Bastion
+        ansible_ssh_private_key_file: null
+        # 2. We ensure Agent Forwarding is explicitly on for this hop
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
-        # We explicitly tell Ansible NOT to look for the key file for this delegated task
-        ansible_ssh_private_key_file: "" 
 
     - name: Copy project repo from bastion to app_node
       ansible.posix.synchronize:
@@ -73,10 +74,11 @@
         mode: push
         use_ssh_args: yes
       delegate_to: bastion_node
+      register: sync_result
       vars:
         ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o ForwardAgent=yes"
-        ansible_ssh_private_key_file: ""
-        
+        ansible_ssh_private_key_file: null
+
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline
   hosts: app_servers

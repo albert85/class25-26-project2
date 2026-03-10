@@ -103,19 +103,11 @@
       become: yes
 
 # Step 4: Install Nginx and Python offline on Private Servers
-- name: Install base packages offline
+- name: Install nginx and python offline
   hosts: app_servers
-  become: yes
-  gather_facts: no
-  tasks:
-    - name: Install RPMs strictly offline
-      ansible.builtin.shell: |
-        dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
-      register: shell_output
-
-    - name: Print dnf output
-      ansible.builtin.debug:
-        var: shell_output.stdout_lines
+  become: yes # Crucial: only root can write to /etc/systemd/system/
+  roles:
+    - role: nginx_deploy
 
 # Step 5: Deploy FastAPI App
 - name: Deploy FastAPI

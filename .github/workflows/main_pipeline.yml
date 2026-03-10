@@ -67,6 +67,10 @@ jobs:
           # 1. Start SSH Agent and add the key
           eval $(ssh-agent -s)
           ssh-add id_rsa
+
+
+          # Add this to verify the key is loaded
+          ssh-add -l
           
           # 2. Run Playbook with ForwardAgent=yes
           # This allows the 'rsync' task on the Bastion to use the key in the Runner's agent

@@ -21,7 +21,7 @@
 
     - name: Download nginx and dependencies
       ansible.builtin.command:
-        cmd: dnf install nginx --downloadonly --downloaddir=/tmp/offline-packages
+        cmd: dnf install -y nginx --downloadonly --downloaddir=/tmp/offline-packages
       register: download_result
       changed_when: "'already installed' not in download_result.stdout"
 

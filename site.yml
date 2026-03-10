@@ -13,11 +13,19 @@
   hosts: bastion
   become: yes
   tasks:
+    - name: Clean up old failed runs and DNF cache
+      ansible.builtin.shell: |
+        rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
+        dnf clean all
+      args:
+        warn: false
+
     - name: Install git and dnf utilities
       ansible.builtin.dnf:
         name: 
           - git
           - dnf-utils
+          - tar
         state: present
 
     - name: Ensure package directory exists

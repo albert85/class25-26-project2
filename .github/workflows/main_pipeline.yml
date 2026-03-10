@@ -54,6 +54,12 @@ jobs:
           pip install ansible boto3 botocore
           [ -f requirements.yml ] && ansible-galaxy install -r requirements.yml --force || echo "No requirements.yml found"
       
+      - name: Download Packages on Runner
+        run: |
+          mkdir -p offline-packages
+          # If your runner is Ubuntu, use 'apt' or just use the Bastion to download 
+          # but we will 'pull' them back to the runner first.
+      
       - name: Run Ansible Playbook (Jump Host Agent Forwarding)
         env:
           BASTION_IP: ${{ secrets.BASTION_IP }}

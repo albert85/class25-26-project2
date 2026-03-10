@@ -60,13 +60,29 @@
         mode: '0755'
       # We delegate this to the bastion to ensure it reaches the private node
       delegate_to: bastion_node
-
-    - name: Copy RPMs from Bastion to App Node
-      ansible.builtin.copy:
-        src: /tmp/offline-packages/
-        dest: /tmp/offline-packages/
-        remote_src: yes
+    
+    - name: Pull packages from Bastion to GitHub Runner
+      ansible.builtin.fetch:
+        src: "/tmp/offline-packages/{{ item }}"
+        dest: "buffer/{{ item }}"
+        flat: yes
       delegate_to: bastion_node
+      run_once: true
+      loop:
+        # List a few key RPMs or use a shell command to register them
+        - nginx.rpm 
+
+    - name: Push packages from Runner to App Node
+      ansible.builtin.copy:
+        src: "buffer/"
+        dest: "/tmp/offline-packages/"
+
+    # - name: Copy RPMs from Bastion to App Node
+    #   ansible.builtin.copy:
+    #     src: /tmp/offline-packages/
+    #     dest: /tmp/offline-packages/
+    #     remote_src: yes
+    #   delegate_to: bastion_node
 
     - name: Copy project repo from Bastion to App Node
       ansible.builtin.copy:

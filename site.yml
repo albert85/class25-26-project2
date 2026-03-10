@@ -79,6 +79,7 @@
 - name: Install nginx offline
   hosts: app_servers
   become: yes
+  gather_facts: no
   tasks:
     - name: Install nginx from local packages
       ansible.builtin.shell: |

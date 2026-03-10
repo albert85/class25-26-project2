@@ -152,3 +152,27 @@
         name: httpd_can_network_connect
         state: yes
         persistent: yes
+    
+       # --- 3. FAIL2BAN FIX ---
+    - name: Configure Fail2Ban to ignore VPC (ALB IPs)
+      ansible.builtin.lineinfile:
+        path: /etc/fail2ban/jail.local
+        regexp: '^ignoreip ='
+        line: "ignoreip = 127.0.0.1/8 {{ target_vpc_cidr }}"
+        create: yes
+      notify: restart_fail2ban
+
+    - name: Restart Nginx to pick up environment changes
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+
+    # --- 2. FIREWALLD FIXES ---
+    - name: Ensure firewalld trusts the VPC (ALB Health Checks)
+      ansible.posix.firewalld:
+        source: "{{ target_vpc_cidr }}"
+        zone: trusted
+        state: enabled
+        permanent: yes
+        immediate: yes

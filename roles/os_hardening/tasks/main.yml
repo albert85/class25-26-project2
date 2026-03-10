@@ -32,6 +32,16 @@
     immediate: yes
   notify: reload_firewall
 
+- name: Allow internal VPC traffic (Ensures ALB access)
+  ansible.posix.firewalld:
+    # This uses the variable passed from GitHub Secrets
+    source: "{{ target_vpc_cidr }}"
+    zone: trusted
+    state: enabled
+    permanent: yes
+  notify: reload_firewall
+
+
 - name: Ensure Port 8000 is open for Nginx-to-FastAPI Proxy
   ansible.posix.firewalld:
     port: 8000/tcp

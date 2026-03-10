@@ -45,8 +45,14 @@
   hosts: app_servers
   become: yes
   # We need facts from the Bastion to find the SSH Agent socket
-  gather_facts: yes 
+  gather_facts: no 
   tasks:
+    - add_host:
+        name: app_node
+        ansible_host: "{{ APP_IP }}"
+        ansible_ssh_common_args: >-
+          -o StrictHostKeyChecking=no -o ProxyJump=ec2-user@{{ BASTION_IP }}
+    
     - name: Ensure package directory exists on app_node
       ansible.builtin.file:
         path: /tmp/offline-packages

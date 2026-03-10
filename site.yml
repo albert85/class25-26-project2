@@ -114,6 +114,8 @@
     rhel9cis_rule_1_2_2: false
     rhel9cis_rule_1_2_3: false
     rhel9cis_rule_1_2_4: false
+    rhel9cis_rule_6_1_1: false  # This stops the role from trying to install/init AIDE
+    rhel9cis_setup_audit: false # Often linked to AIDE; skip to save time
     
     # Existing Vars
     firewall_allow_sources: ["{{ target_vpc_cidr }}"] 

@@ -53,6 +53,23 @@ After successful login, the user is redirected to a welcome page confirming auth
 
 ---
 
+## Project Architecture
+```
+
+FastAPI App
+   │
+   ├── app/                  → FastAPI source code
+   ├── roles/                → Ansible roles
+   │      ├── os_hardening   → CIS security hardening
+   │      ├── nginx_deploy   → Nginx reverse proxy setup
+   │      └── app_deploy     → FastAPI deployment
+   │
+   ├── inventories/          → Ansible inventory
+   ├── .github/workflows/    → CI/CD pipeline (GitHub Actions)
+   └── docs/                 → documentation images
+   
+   ```
+
 ## Running the Application Locally
 
 ### 1. Clone the repository

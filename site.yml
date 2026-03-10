@@ -15,10 +15,14 @@
   tasks:
     - name: Clean up old failed runs and DNF cache
       ansible.builtin.shell: |
-        rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
+        # Force remove any recursive loops or stuck files
+        sudo rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
+        # Clear DNF metadata and cached packages to free space
         dnf clean all
+        # Optional: Remove old logs if disk is still tight
+        journalctl --vacuum-time=1d || true
       args:
-        warn: false
+        executable: /bin/bash
 
     - name: Install git and dnf utilities
       ansible.builtin.dnf:

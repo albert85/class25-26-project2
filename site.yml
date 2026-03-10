@@ -94,15 +94,20 @@
         remote_src: yes
       become: yes
 
+# Step 4: Install Nginx offline on Private Servers
+- name: Install nginx offline
+  hosts: app_servers
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Install nginx strictly offline
+      ansible.builtin.shell: |
+        dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
+      register: shell_output
 
-- name: Install nginx strictly offline
-  ansible.builtin.shell: |
-    dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
-  register: shell_output
-
-- name: Print dnf output
-  ansible.builtin.debug:
-    var: shell_output.stdout_lines
+    - name: Print dnf output
+      ansible.builtin.debug:
+        var: shell_output.stdout_lines
 
 # Step 5: Deploy FastAPI App
 - name: Deploy FastAPI

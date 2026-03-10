@@ -66,7 +66,9 @@
   ansible.builtin.pip:
     requirements: "/home/ec2-user/class25-26-project2/requirements.txt"
     virtualenv: "/home/ec2-user/class25-26-project2/.venv"
-    # --no-index and --find-links force pip to stay offline
+    # This tells Ansible exactly how to create the env without needing 'virtualenv'
+    virtualenv_command: "/usr/bin/python3 -m venv"
+    # Force pip to use the wheels we downloaded to the Bastion
     extra_args: "--no-index --find-links=/tmp/offline-packages/python-wheels"
   become: yes
   become_user: ec2-user

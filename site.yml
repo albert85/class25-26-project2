@@ -162,11 +162,6 @@
         create: yes
       notify: restart_fail2ban
 
-    - name: Restart Nginx to pick up environment changes
-      ansible.builtin.service:
-        name: nginx
-        state: restarted
-
 
     # --- 2. FIREWALLD FIXES ---
     - name: Ensure firewalld trusts the VPC (ALB Health Checks)
@@ -176,3 +171,14 @@
         state: enabled
         permanent: yes
         immediate: yes
+
+    - name: Restart Nginx to pick up environment changes
+      ansible.builtin.service:
+        name: nginx
+        state: restarted
+
+  handlers:
+    - name: restart_fail2ban
+      ansible.builtin.service:
+        name: fail2ban
+        state: restarted

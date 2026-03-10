@@ -47,6 +47,7 @@
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
+  gather_facts: no  # Add this temporarily
   tasks:
     - name: Ensure package directory exists
       ansible.builtin.file:

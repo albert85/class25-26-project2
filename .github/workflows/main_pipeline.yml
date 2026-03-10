@@ -34,7 +34,7 @@ jobs:
           severity: 'HIGH,CRITICAL'
 
   deploy_ansible:
-    # needs: security_scans
+    needs: security_scans
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,13 +1,11 @@
 ---
-# 1. Package Installation
-- name: Install security-essential and python packages
-  ansible.builtin.dnf:
-    name: 
-      - chrony
-      - firewalld
-      - fail2ban
-    state: present
-    update_cache: yes
+# 1. Package Installation (OFFLINE)
+- name: Install security packages from local RPM folder
+  ansible.builtin.shell: |
+    dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
+  register: hardening_pkg_install
+  # This prevents dnf from looking at the internet
+  become: yes
 
 # 2. Security Hardening: Firewall
 - name: Ensure firewalld is running
@@ -26,7 +24,6 @@
 
 - name: Allow internal VPC traffic (Ensures ALB access)
   ansible.posix.firewalld:
-    # This uses the variable passed from GitHub Secrets
     source: "{{ target_vpc_cidr }}"
     zone: trusted
     state: enabled
@@ -44,10 +41,9 @@
     state: present
   notify: restart_chrony
 
-# 4. Ensure Fail2Ban is running
+# 4. Security Hardening: Fail2Ban
 - name: Create local fail2ban config with VPC whitelist
   ansible.builtin.copy:
-    # Use the variable here to prevent Fail2Ban from banning the ALB
     content: |
       [DEFAULT]
       ignorself = true
@@ -60,13 +56,3 @@
     name: fail2ban
     state: started
     enabled: yes
-
-  handlers:
-    - name: reload_firewall
-      ansible.builtin.service:
-        name: firewalld
-        state: reloaded
-    - name: restart_chrony
-      ansible.builtin.service:
-        name: chrony
-        state: restarted

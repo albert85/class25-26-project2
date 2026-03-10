@@ -61,9 +61,17 @@
           - python3
           - python3-pip
           - python3-devel
+          - chrony
+          - firewalld
+          - ipset                  # Required by firewalld
+          - python3-firewall       # Required for ansible.posix.firewalld to work
+          - fail2ban
+          - policycoreutils-python-utils # Required for SELinux tasks
+          - tar
         state: latest
         download_only: yes
         download_dir: /tmp/offline-packages
+    
 
 # Step 3: Bundle and Transfer (Bastion -> Runner -> App Node)
 - name: Transfer packages to private servers
@@ -115,3 +123,47 @@
   become: yes
   roles:
     - role: app_deploy
+
+
+# Step 4: Hardening the Bastion
+# Step 5: Hardening the App Server (OFFLINE MODE)
+- name: OS Hardening Application servers
+  hosts: app_servers
+  become: yes
+  ignore_errors: yes
+  
+  vars:
+    # --- OFFLINE HARDENING FLAGS ---
+    # These variables tell the roles "Don't try to use the internet"
+    os_hardening_install_auditd: false # We install it manually from our RPMs
+    ssh_hardening_manage_packages: false
+    rhel9cis_section1_patch_management: false
+    rhel9cis_rule_1_2_1: false # Skip subscription manager
+    rhel9cis_rule_1_2_2: false # Skip gpgcheck for repos (we are offline)
+    
+    # Existing vars
+    firewall_allow_sources: ["{{ target_vpc_cidr }}"] 
+    ntp_config_file: /etc/chrony.conf
+    os_security_kernel_enable_ntp: false
+    rhel9cis_skip_for_manual_configuration: true
+    rhel9cis_bootloader_password: false
+
+  pre_tasks:
+    - name: Pre-install hardening tools from local RPMs
+      ansible.builtin.shell: |
+        dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
+      # This ensures the tools are already there before the roles run
+
+  roles:
+    - role: os_hardening
+    - role: ssh_hardening
+    - { role: rhel9-cis, ignore_errors: yes }
+
+  post_tasks:
+    # --- 1. SELINUX FIX ---
+    - name: Allow Nginx to proxy to FastAPI
+      ansible.posix.seboolean:
+        name: httpd_can_network_connect
+        state: yes
+        persistent: yes
+      # Note: This requires 'policycoreutils-python-utils' which we downloaded in Step 2

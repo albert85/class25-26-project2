@@ -58,12 +58,18 @@
         scp -o StrictHostKeyChecking=no -r /tmp/offline-packages/* {{ ansible_user }}@{{ ansible_host }}:/tmp/offline-packages/
       delegate_to: bastion_node
       become: no # Run as ec2-user to use the SSH agent from your GitHub Runner
+      environment:
+        # This helps the shell find the forwarded agent from the GitHub Runner
+        SSH_AUTH_SOCK: "{{ ansible_env.SSH_AUTH_SOCK | default('') }}"
 
     - name: Transfer Project from Bastion to App Node via SCP
       ansible.builtin.shell: |
         scp -o StrictHostKeyChecking=no -r /tmp/project/* {{ ansible_user }}@{{ ansible_host }}:/tmp/project/
       delegate_to: bastion_node
       become: no
+      environment:
+        # This helps the shell find the forwarded agent from the GitHub Runner
+        SSH_AUTH_SOCK: "{{ ansible_env.SSH_AUTH_SOCK | default('') }}"
 
     # - name: Copy nginx rpms from bastion to app_node
     #   ansible.builtin.copy:

@@ -61,18 +61,39 @@
       # We delegate this to the bastion to ensure it reaches the private node
       delegate_to: bastion_node
     
+   # 1. Find all RPM files on the Bastion
+    - name: List files on Bastion
+      ansible.builtin.find:
+        paths: /tmp/offline-packages
+        patterns: "*.rpm"
+      delegate_to: bastion_node
+      register: found_files
+      run_once: true
+
+    # 2. Pull each file individually to the GitHub Runner
     - name: Pull packages from Bastion to GitHub Runner
       ansible.builtin.fetch:
-        src: "/tmp/offline-packages/"
-        dest: "buffer/"
+        src: "{{ item.path }}"
+        dest: "buffer/rpms/"
         flat: yes
       delegate_to: bastion_node
       run_once: true
+      loop: "{{ found_files.files }}"
 
+    # 3. Ensure the directory exists on the Private App Node
+    - name: Ensure directory exists on App Node
+      ansible.builtin.file:
+        path: /tmp/offline-packages
+        state: directory
+        mode: '0755'
+      become: yes
+
+    # 4. Push the entire buffer folder from Runner to App Node
     - name: Push packages from Runner to App Node
       ansible.builtin.copy:
-        src: "buffer/"
+        src: "buffer/rpms/"  # Note the trailing slash to copy contents
         dest: "/tmp/offline-packages/"
+      become: yes
 
     # - name: Copy RPMs from Bastion to App Node
     #   ansible.builtin.copy:

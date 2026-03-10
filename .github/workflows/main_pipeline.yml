@@ -78,7 +78,7 @@ jobs:
           
           # 2. Run Playbook with ForwardAgent=yes
           # This allows the 'rsync' task on the Bastion to use the key in the Runner's agent
-          ansible-playbook -i inventories/staging/hosts.ini site.yml \
+          ansible-playbook -i inventories/staging/hosts.ini site.yml -vvvv \
           --vault-password-file .vault_pass \
           -u ec2-user \
           --ssh-common-args="-o StrictHostKeyChecking=no -o ForwardAgent=yes" \

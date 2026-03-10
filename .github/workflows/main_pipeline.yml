@@ -43,9 +43,6 @@ jobs:
         uses: actions/setup-python@v4
         with: { python-version: '3.10' }
       
-      - name: Check Bastion Disk Space
-        run: |
-          ssh -o StrictHostKeyChecking=no -i id_rsa ec2-user@${{ secrets.BASTION_IP }} "df -h"
       
       - name: Cache Ansible Roles
         uses: actions/cache@v3
@@ -80,6 +77,8 @@ jobs:
           # Crucial: Export the variables so all sub-processes see the Agent
           export SSH_AUTH_SOCK=$SSH_AUTH_SOCK
           export SSH_AGENT_PID=$SSH_AGENT_PID
+
+          ssh -o StrictHostKeyChecking=no -i id_rsa ec2-user@${{ secrets.BASTION_IP }} "df -h"
           
           # 2. Run Playbook with ForwardAgent=yes
           # This allows the 'rsync' task on the Bastion to use the key in the Runner's agent

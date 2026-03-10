@@ -8,7 +8,7 @@
       ansible.builtin.wait_for_connection:
         timeout: 60
 
-# Step 2: Prepare packages on Bastion
+# Step 2: Prepare Master Offline Bundle on Bastion
 - name: Prepare packages on bastion
   hosts: bastion
   become: yes
@@ -17,19 +17,12 @@
       ansible.builtin.shell: |
         rm -rf /tmp/offline-packages /tmp/project /tmp/bundle.tar.gz
         dnf clean all
-        journalctl --vacuum-time=1d || true
       args:
         executable: /bin/bash
 
-    - name: Install base utilities and Python/Pip
+    - name: Install base utilities on Bastion
       ansible.builtin.dnf:
-        name: 
-          - git
-          - dnf-utils
-          - tar
-          - python3
-          - python3-pip
-          - python3-devel
+        name: [git, dnf-utils, tar, python3, python3-pip]
         state: present
 
     - name: Ensure package directories exist
@@ -47,14 +40,13 @@
         dest: /tmp/project
         force: yes
 
-    - name: Download Pip dependencies (Wheels)
+    - name: Download Python Wheels (App Dependencies)
       ansible.builtin.shell: |
-        # Use python3 -m pip to ensure the correct path is used
         python3 -m pip download -r /tmp/project/requirements.txt -d /tmp/offline-packages/python-wheels
       args:
         executable: /bin/bash
 
-    - name: Download Nginx and Python RPMs for App Node
+    - name: Download Master RPM List (Nginx, Python, Hardening Tools)
       ansible.builtin.dnf:
         name: 
           - nginx
@@ -63,15 +55,15 @@
           - python3-devel
           - chrony
           - firewalld
-          - ipset                  # Required by firewalld
-          - python3-firewall       # Required for ansible.posix.firewalld to work
+          - ipset
+          - python3-firewall
           - fail2ban
-          - policycoreutils-python-utils # Required for SELinux tasks
+          - policycoreutils-python-utils
           - tar
+          - audit
         state: latest
         download_only: yes
         download_dir: /tmp/offline-packages
-    
 
 # Step 3: Bundle and Transfer (Bastion -> Runner -> App Node)
 - name: Transfer packages to private servers
@@ -79,11 +71,9 @@
   become: yes
   gather_facts: no 
   tasks:
-    - name: Archive packages and project on Bastion
+    - name: Archive everything on Bastion
       community.general.archive:
-        path: 
-          - /tmp/offline-packages
-          - /tmp/project
+        path: [/tmp/offline-packages, /tmp/project]
         dest: /tmp/bundle.tar.gz
         format: gz
       delegate_to: bastion_node
@@ -110,60 +100,53 @@
         remote_src: yes
       become: yes
 
-# Step 4: Install Nginx and Python offline on Private Servers
-- name: Install nginx and python offline
-  hosts: app_servers
-  become: yes # Crucial: only root can write to /etc/systemd/system/
-  roles:
-    - role: nginx_deploy
-
-# Step 5: Deploy FastAPI App
-- name: Deploy FastAPI
+# Step 4 & 5: Hardening and App Deployment
+- name: OS Hardening & FastAPI Deployment
   hosts: app_servers
   become: yes
-  roles:
-    - role: app_deploy
-
-
-# Step 4: Hardening the Bastion
-# Step 5: Hardening the App Server (OFFLINE MODE)
-- name: OS Hardening Application servers
-  hosts: app_servers
-  become: yes
-  ignore_errors: yes
-  
   vars:
-    # --- OFFLINE HARDENING FLAGS ---
-    # These variables tell the roles "Don't try to use the internet"
-    os_hardening_install_auditd: false # We install it manually from our RPMs
+    # --- OFFLINE HARDENING OVERRIDES ---
+    os_hardening_install_auditd: false
+    os_hardening_manage_python: false
     ssh_hardening_manage_packages: false
     rhel9cis_section1_patch_management: false
-    rhel9cis_rule_1_2_1: false # Skip subscription manager
-    rhel9cis_rule_1_2_2: false # Skip gpgcheck for repos (we are offline)
+    rhel9cis_rule_1_2_1: false
+    rhel9cis_rule_1_2_2: false
+    rhel9cis_rule_1_2_3: false
+    rhel9cis_rule_1_2_4: false
     
-    # Existing vars
+    # Existing Vars
     firewall_allow_sources: ["{{ target_vpc_cidr }}"] 
     ntp_config_file: /etc/chrony.conf
     os_security_kernel_enable_ntp: false
     rhel9cis_skip_for_manual_configuration: true
-    rhel9cis_bootloader_password: false
 
   pre_tasks:
-    - name: Pre-install hardening tools from local RPMs
+    - name: Blindfold DNF from internet
+      ansible.builtin.shell: |
+        mkdir -p /etc/yum.repos.d/backup
+        mv /etc/yum.repos.d/*.repo /etc/yum.repos.d/backup/ || true
+      args:
+        executable: /bin/bash
+
+    - name: Pre-install all RPMs strictly offline
       ansible.builtin.shell: |
         dnf install -y --disablerepo=* /tmp/offline-packages/*.rpm
-      # This ensures the tools are already there before the roles run
+      register: offline_dnf_result
 
   roles:
     - role: os_hardening
     - role: ssh_hardening
     - { role: rhel9-cis, ignore_errors: yes }
+    - role: app_deploy
 
   post_tasks:
-    # --- 1. SELINUX FIX ---
-    - name: Allow Nginx to proxy to FastAPI
+    - name: Restore DNF repositories
+      ansible.builtin.shell: mv /etc/yum.repos.d/backup/*.repo /etc/yum.repos.d/ || true
+      ignore_errors: yes
+
+    - name: Final SELinux Fixes
       ansible.posix.seboolean:
         name: httpd_can_network_connect
         state: yes
         persistent: yes
-      # Note: This requires 'policycoreutils-python-utils' which we downloaded in Step 2

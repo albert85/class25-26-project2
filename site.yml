@@ -61,6 +61,10 @@
         mode: push  # Changed to push as we are pushing from Bastion to App
         use_ssh_args: yes  # IMPORTANT: Use the Agent Forwarding from the Runner
       delegate_to: bastion
+      register: sync_result
+      vars:
+        # This ensures the rsync command triggered ON the bastion knows how to reach the app_node
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
     - name: Copy project repo from bastion
       ansible.posix.synchronize:
@@ -69,6 +73,10 @@
         mode: push
         use_ssh_args: yes # IMPORTANT: Use the Agent Forwarding from the Runner
       delegate_to: bastion
+      register: sync_result
+      vars:
+        # This ensures the rsync command triggered ON the bastion knows how to reach the app_node
+        ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline

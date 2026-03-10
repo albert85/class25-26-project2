@@ -73,10 +73,10 @@ jobs:
           ansible-playbook -i inventories/staging/hosts.ini site.yml \
           --vault-password-file .vault_pass \
           -u ec2-user \
-          --extra-vars  target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
-                        BASTION_IP=${{ secrets.BASTION_IP }} \
-                        server_name=${{ secrets.SERVER_NAME }} \
-                        APP_IP=${{ secrets.APP_SERVERS_IP }}"
+          --extra-vars "target_vpc_cidr=${{ secrets.VPC_CIDR_BLOCK }} \
+                BASTION_IP=${{ secrets.BASTION_IP }} \
+                server_name=${{ secrets.SERVER_NAME }} \
+                APP_IP=${{ secrets.APP_SERVERS_IP }}"
                          
 
       - name: Cleanup Secrets

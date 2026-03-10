@@ -28,6 +28,7 @@
     rich_rule: 'rule family="ipv4" source address="{{ target_vpc_cidr }}" port port="80" protocol="tcp" accept'
     permanent: yes
     state: enabled
+    service: http
     immediate: yes
   notify: reload_firewall
 
@@ -38,6 +39,7 @@
     state: enabled
     immediate: yes
   notify: reload_firewall
+
 
 # 3. Security Hardening: Time Sync
 - name: Configure AWS Time Sync

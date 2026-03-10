@@ -40,50 +40,34 @@
         force: yes
 
 # Step 3: Transfer files from Bastion to App Servers
+# Step 3: Transfer files from Bastion to App Servers
 - name: Transfer packages to private servers
   hosts: app_servers
   become: yes
-  gather_facts: no
+  # We need facts from the Bastion to find the SSH Agent socket
+  gather_facts: yes 
   tasks:
     - name: Ensure package directory exists on app_node
       ansible.builtin.file:
         path: /tmp/offline-packages
         state: directory
         mode: '0755'
+      # We delegate this to the bastion to ensure it reaches the private node
       delegate_to: bastion_node
 
-    - name: Transfer RPMs from Bastion to App Node via SCP
-      # We use the shell module to run a direct SCP command from the Bastion
-      ansible.builtin.shell: |
-        scp -o StrictHostKeyChecking=no -r /tmp/offline-packages/* {{ ansible_user }}@{{ ansible_host }}:/tmp/offline-packages/
+    - name: Copy RPMs from Bastion to App Node
+      ansible.builtin.copy:
+        src: /tmp/offline-packages/
+        dest: /tmp/offline-packages/
+        remote_src: yes
       delegate_to: bastion_node
-      become: no # Run as ec2-user to use the SSH agent from your GitHub Runner
-      environment:
-        # This helps the shell find the forwarded agent from the GitHub Runner
-        SSH_AUTH_SOCK: "{{ ansible_env.SSH_AUTH_SOCK | default('') }}"
 
-    - name: Transfer Project from Bastion to App Node via SCP
-      ansible.builtin.shell: |
-        scp -o StrictHostKeyChecking=no -r /tmp/project/* {{ ansible_user }}@{{ ansible_host }}:/tmp/project/
+    - name: Copy project repo from Bastion to App Node
+      ansible.builtin.copy:
+        src: /tmp/project/
+        dest: /tmp/project/
+        remote_src: yes
       delegate_to: bastion_node
-      become: no
-      environment:
-        # This helps the shell find the forwarded agent from the GitHub Runner
-        SSH_AUTH_SOCK: "{{ ansible_env.SSH_AUTH_SOCK | default('') }}"
-
-    # - name: Copy nginx rpms from bastion to app_node
-    #   ansible.builtin.copy:
-    #     src: /tmp/offline-packages
-    #     dest: /tmp/offline-packages/
-    #     remote_src: yes  # This is the magic key for the copy module
-    #   delegate_to: bastion_node
-
-    # - name: Copy project repo from bastion to app_node
-    #   ansible.builtin.copy:
-    #     src: /tmp/project
-    #     dest: /tmp/project/
-    #     remote_src: yes
-    #   delegate_to: bastion_node
 
 # Step 4: Install Nginx offline on Private Servers
 - name: Install nginx offline
